@@ -1,0 +1,33 @@
+#	$NetBSD: KUROBOX,v 1.8 2020/01/03 03:44:42 thorpej Exp $
+#
+# KuroBox/LinkStation support
+#
+
+include "arch/sandpoint/conf/GENERIC"
+
+no com0
+no satmgr0
+com0	at eumb? unit 1			# console at 0x4600
+#com1	at eumb? unit 0
+satmgr0 at eumb? unit 0			# satmgr at 0x4500
+
+no nhpow0
+no gpio*
+
+no s390rtc*
+no pcf8563rtc*
+no dsrtc*
+no strtc*
+
+no acardide*
+no viaide* 
+
+no ral*
+no skc*
+no sk*
+no stge*
+no wm*
+
+no inphy*
+no nsphy*
+no makphy*
