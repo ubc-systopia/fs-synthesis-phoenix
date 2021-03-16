@@ -49,6 +49,7 @@ __KERNEL_RCSID(0, "$NetBSD: v7fs_vnops.c,v 1.31 2020/06/27 17:29:18 christos Exp
 #include <sys/buf.h>
 #include <sys/stat.h>	/*APPEND */
 #include <miscfs/genfs/genfs.h>
+//#include <ufs/ufs/ufs_extern.h>
 
 #include <fs/v7fs/v7fs.h>
 #include <fs/v7fs/v7fs_impl.h>
@@ -57,6 +58,8 @@ __KERNEL_RCSID(0, "$NetBSD: v7fs_vnops.c,v 1.31 2020/06/27 17:29:18 christos Exp
 #include <fs/v7fs/v7fs_file.h>
 #include <fs/v7fs/v7fs_datablock.h>
 #include <fs/v7fs/v7fs_extern.h>
+#include <fs/v7fs/v7fs_endian.h>
+
 
 #ifdef V7FS_VNOPS_DEBUG
 #define	DPRINTF(fmt, args...)	printf("%s: " fmt, __func__, ##args)
@@ -66,6 +69,7 @@ __KERNEL_RCSID(0, "$NetBSD: v7fs_vnops.c,v 1.31 2020/06/27 17:29:18 christos Exp
 
 static v7fs_mode_t vtype_to_v7fs_mode(enum vtype);
 static uint8_t v7fs_mode_to_d_type(v7fs_mode_t);
+
 
 static v7fs_mode_t
 vtype_to_v7fs_mode(enum vtype type)
@@ -85,18 +89,205 @@ v7fs_mode_to_d_type(v7fs_mode_t mode)
 	return (mode & V7FS_IFMT) >> 12;
 }
 
+/* MOP functions introduced */
+
+// MOP and helper function(s) related to create()
+
+int v7fs_create_setattr(struct v7fs_fileattr *attr, struct componentname* cnp, struct vattr* vap)
+{
+    int error = 0;
+    kauth_cred_t cr = cnp->cn_cred;
+
+    attr->uid = kauth_cred_geteuid(cr);
+    attr->gid = kauth_cred_getegid(cr);
+    attr->mode = vap->va_mode | vtype_to_v7fs_mode (vap->va_type);
+    attr->device = 0;
+    
+    return error;
+}
+
+int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap)
+{
+    int error = 0;
+    struct v7fs_node *parent_node = dvp->v_data;
+    struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
+    struct v7fs_self *fs = v7fsmount->core;
+    struct mount *mp = v7fsmount->mountp;
+    struct v7fs_fileattr attr;
+    v7fs_ino_t ino;
+    
+    memset(&attr, 0, sizeof(attr));
+    
+    if ((error = v7fs_create_setattr(&attr, cnp, vap)) != 0) {
+        return error;
+    }
+    
+    /* Allocate disk entry. and register its entry to parent directory. */
+    if ((error = v7fs_file_allocate(fs, &parent_node->inode,
+            cnp->cn_nameptr, &attr, &ino))) {
+        DPRINTF("v7fs_file_allocate failed.\n");
+        return error;
+    }
+    /* Sync dirent size change. */
+    uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));
+
+    /* Get myself vnode. */
+    if ((error = v7fs_vget(mp, ino, LK_EXCLUSIVE, vpp)) != 0) {
+        DPRINTF("v7fs_vget failed.\n");
+        return error;
+    }
+
+    return error;
+    
+}
+
+void v7fs_mop_postcreate_update(struct vnode** vpp)
+{
+ 
+    /* Scheduling update time. real update by v7fs_update */
+    struct v7fs_node *newnode = (*vpp)->v_data;
+    newnode->update_ctime = true;
+    newnode->update_mtime = true;
+    newnode->update_atime = true;
+}
+
+// MOP and helper function(s) related to open()
+
+int
+v7fs_mop_open_opt(struct vnode *vp, int mode)
+{
+    struct v7fs_node *v7node = vp->v_data;
+    struct v7fs_inode *inode = &v7node->inode;
+
+    DPRINTF("inode %d\n", inode->inode_number);
+    if (inode->append_mode &&
+        ((mode & (FWRITE | O_APPEND)) == FWRITE)) {
+        DPRINTF("file is already opened by append mode.\n");
+        return EPERM;
+    }
+
+    return 0;
+}
+
+// MOP and helper function(s) related to close()
+
+void
+v7fs_mop_close_update(struct vnode *vp)
+{
+#ifdef V7FS_VNOPS_DEBUG
+    struct v7fs_node *v7node = vp->v_data;
+    struct v7fs_inode *inode = &v7node->inode;
+#endif
+    DPRINTF("#%d (i)%dbyte (v)%zubyte\n", inode->inode_number,
+        v7fs_inode_filesize(inode), vp->v_size);
+
+    // Update timestamp
+    v7fs_update(vp, 0, 0, UPDATE_WAIT);
+}
+
+// MOP and helper function(s) related to read()
+
+vsize_t v7fs_mop_get_filesize(struct vnode* vp)
+{
+    struct v7fs_node *v7node = VNTOV7FSN(vp);
+    struct v7fs_inode *inode = &v7node->inode;
+    vsize_t filesize = v7fs_inode_filesize(inode);
+    
+    return filesize;
+}
+
+int v7fs_mop_check_maxsize(struct vnode* vp, struct uio* uio)
+{
+    int error = 0;
+    
+    if (uio->uio_offset > V7FS_MAX_FILESIZE) {
+        return EFBIG;
+    }
+    
+    return error;
+}
+
+int
+v7fs_mop_postread_update(struct vnode *vp, int ioflag, int oerror)
+{
+    int error = oerror;
+    struct v7fs_node *v7node = VNTOV7FSN(vp);
+    
+    v7node->update_atime = true;
+    return (error);
+}
+
+// MOP and helper function(s) related to write()
+
+int
+v7fs_mop_write_checks(struct vnode* vp, struct uio* uio, kauth_cred_t cred, int ioflag)
+{
+    struct v7fs_node *v7node = vp->v_data;
+    struct v7fs_inode *inode = &v7node->inode;
+    vsize_t size = v7fs_inode_filesize(inode);
+    int error = 0;
+    
+    if (ioflag & IO_APPEND) {
+        uio->uio_offset = size;
+    }
+    return error;
+}
+
+int v7fs_mop_get_blkoff(struct vnode* vp, struct uio* uio)
+{
+    return (uio->uio_offset & (V7FS_BSIZE - 1));
+}
+
+vsize_t v7fs_mop_get_bytelen(struct vnode* vp, int blkoff, struct uio* uio)
+{
+    return MIN(V7FS_BSIZE - blkoff, uio->uio_resid);
+}
+
+int v7fs_mop_datablock_expand(struct vnode* vp, struct uio* uio, vsize_t bytelen, kauth_cred_t cred)
+{
+    struct v7fs_node *v7node = vp->v_data;
+    struct v7fs_inode *inode = &v7node->inode;
+    struct v7fs_self *fs = v7node->v7fsmount->core;
+    vsize_t current_size = v7fs_inode_filesize(inode);
+    vsize_t new_size = uio->uio_offset + bytelen;
+    ssize_t expand = new_size - current_size;
+    int error = 0;
+    
+    if (expand > 0) {
+        if ((error = v7fs_datablock_expand(fs, inode, expand)))
+            return error;
+    }
+    
+    return error;
+}
+
+vsize_t v7fs_mop_round(struct vnode * vp, struct uio* uio)
+{
+    return V7FS_ROUND_BSIZE(uio->uio_offset);
+}
+
+
+
+void v7fs_mop_postwrite_update(struct vnode* vp, struct uio* uio, kauth_cred_t cred, int resid)
+{
+    struct v7fs_node *v7node = vp->v_data;
+    v7node->update_mtime = true;
+}
+
+/* Original v7fs functions */
+
 int
 v7fs_lookup(void *v)
 {
-	struct vop_lookup_v2_args /* {
+	struct vop_lookup_v2_args  /*{
 				  struct vnode *a_dvp;
 				  struct vnode **a_vpp;
 				  struct componentname *a_cnp;
-				  } */ *a = v;
+				  } */  *a = v;
 	struct vnode *dvp = a->a_dvp;
 	struct v7fs_node *parent_node = dvp->v_data;
 	struct v7fs_inode *parent = &parent_node->inode;
-	struct v7fs_self *fs = parent_node->v7fsmount->core;/* my filesystem */
+	struct v7fs_self *fs = parent_node->v7fsmount->core; //my filesystem
 	struct vnode *vpp;
 	struct componentname *cnp = a->a_cnp;
 	int nameiop = cnp->cn_nameiop;
@@ -116,39 +307,39 @@ v7fs_lookup(void *v)
 
 	*a->a_vpp = 0;
 
-	/* Check directory permission for search */
+	// Check directory permission for search
 	if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred))) {
 		DPRINTF("***perm.\n");
 		return error;
 	}
 
-	/* Deny last component write operation on a read-only mount */
+	// Deny last component write operation on a read-only mount
 	if (islastcn && (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
 	    (nameiop == DELETE || nameiop == RENAME)) {
 		DPRINTF("***ROFS.\n");
 		return EROFS;
 	}
 
-	/* No lookup on removed directory */
+	// No lookup on removed directory
 	if (v7fs_inode_nlink(parent) == 0)
 		return ENOENT;
 
-	/* "." */
+	// "."
 	if (namelen == 1 && name[0] == '.') {
 		if ((nameiop == RENAME) && islastcn) {
-			return EISDIR; /* t_vnops rename_dir(3) */
+			return EISDIR; // t_vnops rename_dir(3)
 		}
-		vref(dvp); /* usecount++ */
+		vref(dvp); // usecount++
 		*a->a_vpp = dvp;
 		DPRINTF("done.(.)\n");
 		return 0;
 	}
 
-	/* ".." and reguler file. */
+	// ".." and reguler file.
 	if ((error = v7fs_file_lookup_by_name(fs, parent, name, &ino))) {
-		/* Not found. Tell this entry be able to allocate. */
+		// Not found. Tell this entry be able to allocate.
 		if (((nameiop == CREATE) || (nameiop == RENAME)) && islastcn) {
-			/* Check directory permission to allocate. */
+			// Check directory permission to allocate.
 			if ((error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred))) {
 				DPRINTF("access denied. (%s)\n", name);
 				return error;
@@ -167,11 +358,11 @@ v7fs_lookup(void *v)
 		}
 	}
 
-	/* Entry found. Allocate v-node */
+	// Entry found. Allocate v-node
 	// Check permissions?
 	vpp = 0;
 	if (isdotdot) {
-		VOP_UNLOCK(dvp); /* preserve reference count. (not vput) */
+		VOP_UNLOCK(dvp); // preserve reference count. (not vput)
 	}
 	DPRINTF("enter vget\n");
 	error = v7fs_vget(dvp->v_mount, ino, LK_EXCLUSIVE, &vpp);
@@ -192,65 +383,6 @@ v7fs_lookup(void *v)
 }
 
 int
-v7fs_create(void *v)
-{
-	struct vop_create_v3_args /* {
-				  struct vnode *a_dvp;
-				  struct vnode **a_vpp;
-				  struct componentname *a_cnp;
-				  struct vattr *a_vap;
-				  } */ *a = v;
-	struct v7fs_node *parent_node = a->a_dvp->v_data;
-	struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
-	struct v7fs_self *fs = v7fsmount->core;
-	struct mount *mp = v7fsmount->mountp;
-	struct v7fs_fileattr attr;
-	struct vattr *va = a->a_vap;
-	kauth_cred_t cr = a->a_cnp->cn_cred;
-	v7fs_ino_t ino;
-	int error = 0;
-
-	DPRINTF("%s parent#%d\n", a->a_cnp->cn_nameptr,
-	    parent_node->inode.inode_number);
-	KDASSERT((va->va_type == VREG) || (va->va_type == VSOCK));
-
-	memset(&attr, 0, sizeof(attr));
-	attr.uid = kauth_cred_geteuid(cr);
-	attr.gid = kauth_cred_getegid(cr);
-	attr.mode = va->va_mode | vtype_to_v7fs_mode (va->va_type);
-	attr.device = 0;
-
-	/* Allocate disk entry. and register its entry to parent directory. */
-	if ((error = v7fs_file_allocate(fs, &parent_node->inode,
-		    a->a_cnp->cn_nameptr, &attr, &ino))) {
-		DPRINTF("v7fs_file_allocate failed.\n");
-		return error;
-	}
-	/* Sync dirent size change. */
-	uvm_vnp_setsize(a->a_dvp, v7fs_inode_filesize(&parent_node->inode));
-
-	/* Get myself vnode. */
-	*a->a_vpp = 0;
-	error = v7fs_vget(mp, ino, LK_EXCLUSIVE, a->a_vpp);
-	if (error != 0) {
-		DPRINTF("v7fs_vget failed.\n");
-		return error;
-	}
-
-	/* Scheduling update time. real update by v7fs_update */
-	struct v7fs_node *newnode = (*a->a_vpp)->v_data;
-	newnode->update_ctime = true;
-	newnode->update_mtime = true;
-	newnode->update_atime = true;
-	DPRINTF("allocated %s->#%d\n", a->a_cnp->cn_nameptr, ino);
-
-	if (error == 0)
-		VOP_UNLOCK(*a->a_vpp);
-
-	return error;
-}
-
-int
 v7fs_mknod(void *v)
 {
 	struct vop_mknod_v3_args /* {
@@ -258,7 +390,7 @@ v7fs_mknod(void *v)
 				 struct vnode		**a_vpp;
 				 struct componentname	*a_cnp;
 				 struct vattr		*a_vap;
-				 } */ *a = v;
+				 } */  *a = v;
 	struct componentname *cnp = a->a_cnp;
 	kauth_cred_t cr = cnp->cn_cred;
 	struct vnode *dvp = a->a_dvp;
@@ -283,7 +415,7 @@ v7fs_mknod(void *v)
 	if ((error = v7fs_file_allocate(fs, &parent_node->inode,
 	    cnp->cn_nameptr, &attr, &ino)))
 		return error;
-	/* Sync dirent size change. */
+	// Sync dirent size change.
 	uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));
 
 	error = v7fs_vget(mp, ino, LK_EXCLUSIVE, a->a_vpp);
@@ -300,53 +432,6 @@ v7fs_mknod(void *v)
 		VOP_UNLOCK(*a->a_vpp);
 
 	return error;
-}
-
-int
-v7fs_open(void *v)
-{
-	struct vop_open_args /* {
-				struct vnode *a_vp;
-				int  a_mode;
-				kauth_cred_t a_cred;
-				} */ *a = v;
-
-	struct vnode *vp = a->a_vp;
-	struct v7fs_node *v7node = vp->v_data;
-	struct v7fs_inode *inode = &v7node->inode;
-
-	DPRINTF("inode %d\n", inode->inode_number);
-	/* Append mode file pointer is managed by kernel. */
-	if (inode->append_mode &&
-	    ((a->a_mode & (FWRITE | O_APPEND)) == FWRITE)) {
-		DPRINTF("file is already opened by append mode.\n");
-		return EPERM;
-	}
-
-	return 0;
-}
-
-int
-v7fs_close(void *v)
-{
-	struct vop_close_args /* {
-				 struct vnodeop_desc *a_desc;
-				 struct vnode *a_vp;
-				 int  a_fflag;
-				 kauth_cred_t a_cred;
-				 } */ *a = v;
-	struct vnode *vp = a->a_vp;
-#ifdef V7FS_VNOPS_DEBUG
-	struct v7fs_node *v7node = vp->v_data;
-	struct v7fs_inode *inode = &v7node->inode;
-#endif
-	DPRINTF("#%d (i)%dbyte (v)%zubyte\n", inode->inode_number,
-	    v7fs_inode_filesize(inode), vp->v_size);
-
-	/* Update timestamp */
-	v7fs_update(vp, 0, 0, UPDATE_WAIT);
-
-	return 0;
 }
 
 static int
@@ -569,91 +654,6 @@ v7fs_setattr(void *v)
 }
 
 int
-v7fs_read(void *v)
-{
-	struct vop_read_args /* {
-				struct vnode *a_vp;
-				struct uio *a_uio;
-				int a_ioflag;
-				kauth_cred_t a_cred;
-				} */ *a = v;
-	struct vnode *vp = a->a_vp;
-	struct uio *uio = a->a_uio;
-	struct v7fs_node *v7node = vp->v_data;
-	struct v7fs_inode *inode = &v7node->inode;
-	vsize_t sz, filesz = v7fs_inode_filesize(inode);
-	const int advice = IO_ADV_DECODE(a->a_ioflag);
-	int error = 0;
-
-	DPRINTF("type=%d inode=%d\n", vp->v_type, v7node->inode.inode_number);
-
-	while (uio->uio_resid > 0) {
-		if ((sz = MIN(filesz - uio->uio_offset, uio->uio_resid)) == 0)
-			break;
-
-		error = ubc_uiomove(&vp->v_uobj, uio, sz, advice, UBC_READ |
-		    UBC_PARTIALOK | UBC_VNODE_FLAGS(vp));
-		if (error) {
-			break;
-		}
-		DPRINTF("read %zubyte\n", sz);
-	}
-	v7node->update_atime = true;
-
-	return error;
-}
-
-int
-v7fs_write(void *v)
-{
-	struct vop_write_args /* {
-				 struct vnode *a_vp;
-				 struct uio *a_uio;
-				 int  a_ioflag;
-				 kauth_cred_t a_cred;
-				 } */ *a = v;
-	struct vnode *vp = a->a_vp;
-	struct uio *uio = a->a_uio;
-	int advice = IO_ADV_DECODE(a->a_ioflag);
-	struct v7fs_node *v7node = vp->v_data;
-	struct v7fs_inode *inode = &v7node->inode;
-	struct v7fs_self *fs = v7node->v7fsmount->core;
-	vsize_t sz;
-	int error = 0;
-
-	if (uio->uio_resid == 0)
-		return 0;
-
-	sz = v7fs_inode_filesize(inode);
-	DPRINTF("(i)%ld (v)%zu ofs=%zu + res=%zu = %zu\n", sz, vp->v_size,
-	    uio->uio_offset, uio->uio_resid, uio->uio_offset + uio->uio_resid);
-
-	/* Append mode file offset is managed by kernel. */
-	if (a->a_ioflag & IO_APPEND)
-		uio->uio_offset = sz;
-
-	/* If write region is over filesize, expand. */
-	size_t newsize= uio->uio_offset + uio->uio_resid;
-	ssize_t expand = newsize - sz;
- 	if (expand > 0) {
-		if ((error = v7fs_datablock_expand(fs, inode, expand)))
-			return error;
-		uvm_vnp_setsize(vp, newsize);
-	}
-
-	while (uio->uio_resid > 0) {
-		sz = uio->uio_resid;
-		if ((error = ubc_uiomove(&vp->v_uobj, uio, sz, advice,
-			    UBC_WRITE | UBC_VNODE_FLAGS(vp))))
-			break;
-		DPRINTF("write %zubyte\n", sz);
-	}
-	v7node->update_mtime = true;
-
-	return error;
-}
-
-int
 v7fs_fsync(void *v)
 {
 	struct vop_fsync_args /* {
@@ -847,7 +847,7 @@ v7fs_mkdir(void *v)
 	if ((error = v7fs_file_allocate(fs, &parent_node->inode,
 	    cnp->cn_nameptr, &attr, &ino)))
 		return error;
-	/* Sync dirent size change. */
+	// Sync dirent size change.
 	uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));
 
 	error = v7fs_vget(mp, ino, LK_EXCLUSIVE, a->a_vpp);

@@ -162,6 +162,9 @@ struct genfs_ops rumpfs_genfsops = {
 	.gop_markupdate = NULL,
 };
 
+struct genfs_mops rumpfs_genfsmops = {
+};
+
 struct rumpfs_node {
 	struct genfs_node rn_gn;
 	struct vattr rn_va;
@@ -1955,7 +1958,7 @@ rumpfs_loadvnode(struct mount *mp, struct vnode *vp,
 	vp->v_size = vp->v_writesize = va->va_size;
 	vp->v_data = rn;
 
-	genfs_node_init(vp, &rumpfs_genfsops);
+	genfs_node_init(vp, &rumpfs_genfsops, &rumpfs_genfsmops);
 	mutex_enter(&reclock);
 	rn->rn_vp = vp;
 	mutex_exit(&reclock);

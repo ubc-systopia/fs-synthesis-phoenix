@@ -61,18 +61,15 @@ struct v7fs_node {
 };
 
 #define	VFSTOV7FS(mp)	((struct v7fs_mount *)((mp)->mnt_data))
+#define VNTOV7FSN(vp)   ((struct v7fs_node *) ((vp)->v_data))
 
 __BEGIN_DECLS
 /* v-node ops. */
 int v7fs_lookup(void *);
 int v7fs_create(void *);
-int v7fs_open(void *);
-int v7fs_close(void *);
 int v7fs_access(void *);
 int v7fs_getattr(void *);
 int v7fs_setattr(void *);
-int v7fs_read(void *);
-int v7fs_write(void *);
 int v7fs_fsync(void *);
 int v7fs_remove(void *);
 int v7fs_rename(void *);
@@ -106,8 +103,37 @@ extern int (**v7fs_fifoop_p)(void *);
 int v7fs_gop_alloc(struct vnode *, off_t, off_t, int, kauth_cred_t);
 extern const struct genfs_ops v7fs_genfsops;
 
+/* MOP and helper function(s) */
+// Create
+int v7fs_create_setattr(struct v7fs_fileattr *attr, struct componentname* cnp, struct vattr* vap);
+int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap);
+void v7fs_mop_postcreate_update(struct vnode** vpp);
+
+// Open/close
+int v7fs_mop_open_opt(struct vnode *, int);
+void v7fs_mop_close_update(struct vnode *);
+
+// Read
+int v7fs_mop_read(struct vnode *, struct uio *, int);
+vsize_t v7fs_mop_get_filesize(struct vnode *);
+int v7fs_mop_postread_update(struct vnode *, int, int);
+int v7fs_mop_check_maxsize(struct vnode *, struct uio *);
+
+// Write
+int v7fs_mop_write_checks(struct vnode *, struct uio *, kauth_cred_t, int);
+int v7fs_mop_get_blkoff(struct vnode *, struct uio *);
+vsize_t v7fs_mop_get_bytelen(struct vnode *, int, struct uio *);
+vsize_t v7fs_mop_round(struct vnode *, struct uio*);
+int v7fs_mop_datablock_expand(struct vnode *, struct uio *, vsize_t, kauth_cred_t);
+void v7fs_mop_postwrite_update(struct vnode *, struct uio *, kauth_cred_t, int);
+extern const struct genfs_mops v7fs_genfsmops;
+
+
 /* internal service */
 int v7fs_update(struct vnode *, const struct timespec *,
     const struct timespec *, int);
+
+// Helper functions
+int v7fs_read_flagssubr(struct vnode *vp, int ioflag, int oerror);
 __END_DECLS
 #endif /* _FS_V7FS_EXTERN_H_ */

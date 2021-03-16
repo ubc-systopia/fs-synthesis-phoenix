@@ -81,6 +81,9 @@ struct pool nilfs_node_pool;
 /* globals */
 struct _nilfs_devices nilfs_devices;
 
+struct genfs_mops nilfs_genfsmops = {
+};
+
 /* supported functions predefined */
 VFS_PROTOS(nilfs);
 
@@ -1173,7 +1176,7 @@ nilfs_loadvnode(struct mount *mp, struct vnode *vp,
 	node->vnode = vp;
 
 	/* initialise genfs */
-	genfs_node_init(vp, &nilfs_genfsops);
+	genfs_node_init(vp, &nilfs_genfsops, &nilfs_genfsmops);
 
 	/* check if we're fetching the root */
 	if (ino == NILFS_ROOT_INO)

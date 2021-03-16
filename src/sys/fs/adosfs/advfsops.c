@@ -76,6 +76,8 @@ static const struct genfs_ops adosfs_genfsops = {
 	.gop_size = genfs_size,
 };
 
+static const struct genfs_mops adosfs_genfsmops = {};
+
 int (**adosfs_vnodeop_p)(void *);
 
 int
@@ -580,7 +582,7 @@ adosfs_loadvnode(struct mount *mp, struct vnode *vp,
 	vp->v_tag = VT_ADOSFS;
 	vp->v_op = adosfs_vnodeop_p;
 	vp->v_data = ap;
-	genfs_node_init(vp, &adosfs_genfsops);
+	genfs_node_init(vp, &adosfs_genfsops, &adosfs_genfsmops);
 	uvm_vnp_setsize(vp, ap->fsize);
 	*new_key = &ap->block;
 	return 0;

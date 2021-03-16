@@ -101,8 +101,7 @@ extern int prtactive;
 static int ext2fs_chmod(struct vnode *, int, kauth_cred_t, struct lwp *);
 static int ext2fs_chown(struct vnode *, uid_t, gid_t, kauth_cred_t,
 				struct lwp *);
-static int ext2fs_makeinode(struct vattr *, struct vnode *, struct vnode **,
-				struct componentname *, int);
+static int ext2fs_makeinode(struct vattr *, struct vnode *, struct vnode **, struct componentname *, int);
 
 union _qcvt {
 	int64_t	qcvt;
@@ -122,28 +121,68 @@ union _qcvt {
 	(q) = tmp.qcvt; \
 }
 
-/*
- * Create a regular file
- */
+/* MOP functions introduced */
+
+// MOP and helper function(s) related to create()
+
 int
-ext2fs_create(void *v)
-{
-	struct vop_create_v3_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap = v;
-	int	error;
+ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap) {
+    struct inode *ip, *pdir;
+    int error = 0;
+    struct ufs_lookup_results *ulr;
 
-	error = ext2fs_makeinode(ap->a_vap, ap->a_dvp, ap->a_vpp, ap->a_cnp, 1);
+    pdir = VTOI(dvp);
 
-	if (error)
-		return error;
-	VN_KNOTE(ap->a_dvp, NOTE_WRITE);
-	VOP_UNLOCK(*ap->a_vpp);
-	return 0;
+    /* XXX should handle this material another way */
+    ulr = &pdir->i_crap;
+    UFS_CHECK_CRAPCOUNTER(pdir);
+
+    ip = VTOI(*vpp);
+    
+    /*
+     * Make sure inode goes to disk before directory entry.
+     */
+    if ((error = ext2fs_update(*vpp, NULL, NULL, UPDATE_WAIT)) != 0)
+        goto bad;
+    error = ext2fs_direnter(ip, dvp, ulr, cnp);
+    if (error != 0)
+        goto bad;
+    
+    return error;
+    
+bad:
+    /*
+     * Write error occurred trying to update the inode
+     * or the directory so must deallocate the inode.
+     */
+    ip->i_e2fs_nlink = 0;
+    ip->i_flag |= IN_CHANGE;
+    vput(*vpp);
+    return error;
+    
 }
+
+// MOP and helper function(s) related to open()
+int
+ext2fs_mop_open_opt(struct vnode *vp, int mode)
+{
+    // Files marked append-only must be opened for appending.
+    if ((VTOI(vp)->i_e2fs_flags & EXT2_APPEND) &&
+        (mode & (FWRITE | O_APPEND)) == FWRITE)
+        return EPERM;
+    return 0;
+}
+
+// MOP and helper function(s) related to close()
+
+void
+ext2fs_mop_close_update(struct vnode *vp)
+{
+    if (vrefcnt(vp) > 1)
+        UFS_ITIMES(vp, NULL, NULL, NULL);
+}
+
+/* Original ext2fs functions */
 
 /*
  * Mknod vnode call
@@ -172,29 +211,6 @@ ext2fs_mknod(void *v)
 	return 0;
 }
 
-/*
- * Open called.
- *
- * Just check the APPEND flag.
- */
-/* ARGSUSED */
-int
-ext2fs_open(void *v)
-{
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		kauth_cred_t a_cred;
-	} */ *ap = v;
-
-	/*
-	 * Files marked append-only must be opened for appending.
-	 */
-	if ((VTOI(ap->a_vp)->i_e2fs_flags & EXT2_APPEND) &&
-		(ap->a_mode & (FWRITE | O_APPEND)) == FWRITE)
-		return EPERM;
-	return 0;
-}
 
 static int
 ext2fs_check_possible(struct vnode *vp, struct inode *ip, mode_t mode)
@@ -1008,55 +1024,56 @@ ext2fs_vinit(struct mount *mntp, int (**specops)(void *),
  */
 static int
 ext2fs_makeinode(struct vattr *vap, struct vnode *dvp, struct vnode **vpp,
-		struct componentname *cnp, int do_direnter)
+        struct componentname *cnp, int do_direnter)
 {
-	struct inode *ip, *pdir;
-	struct vnode *tvp;
-	int error;
-	struct ufs_lookup_results *ulr;
+    struct inode *ip, *pdir;
+    struct vnode *tvp;
+    int error;
+    struct ufs_lookup_results *ulr;
 
-	pdir = VTOI(dvp);
+    pdir = VTOI(dvp);
 
-	/* XXX should handle this material another way */
-	ulr = &pdir->i_crap;
-	UFS_CHECK_CRAPCOUNTER(pdir);
+    /* XXX should handle this material another way */
+    ulr = &pdir->i_crap;
+    UFS_CHECK_CRAPCOUNTER(pdir);
 
-	*vpp = NULL;
+    *vpp = NULL;
 
-	error = vcache_new(dvp->v_mount, dvp, vap, cnp->cn_cred, NULL, &tvp);
-	if (error)
-		return error;
-	error = vn_lock(tvp, LK_EXCLUSIVE);
-	if (error) {
-		vrele(tvp);
-		return error;
-	}
-	ip = VTOI(tvp);
-	if (do_direnter) {
-		/*
-		 * Make sure inode goes to disk before directory entry.
-		 */
-		if ((error = ext2fs_update(tvp, NULL, NULL, UPDATE_WAIT)) != 0)
-			goto bad;
-		error = ext2fs_direnter(ip, dvp, ulr, cnp);
-		if (error != 0)
-			goto bad;
-	}
+    error = vcache_new(dvp->v_mount, dvp, vap, cnp->cn_cred, NULL, &tvp);
+    if (error)
+        return error;
+    error = vn_lock(tvp, LK_EXCLUSIVE);
+    if (error) {
+        vrele(tvp);
+        return error;
+    }
+    ip = VTOI(tvp);
+    if (do_direnter) {
+        /*
+         * Make sure inode goes to disk before directory entry.
+         */
+        if ((error = ext2fs_update(tvp, NULL, NULL, UPDATE_WAIT)) != 0)
+            goto bad;
+        error = ext2fs_direnter(ip, dvp, ulr, cnp);
+        if (error != 0)
+            goto bad;
+    }
 
-	*vpp = tvp;
-	cache_enter(dvp, *vpp, cnp->cn_nameptr, cnp->cn_namelen, cnp->cn_flags);
-	return 0;
+    *vpp = tvp;
+    cache_enter(dvp, *vpp, cnp->cn_nameptr, cnp->cn_namelen, cnp->cn_flags);
+    return 0;
 
 bad:
-	/*
-	 * Write error occurred trying to update the inode
-	 * or the directory so must deallocate the inode.
-	 */
-	ip->i_e2fs_nlink = 0;
-	ip->i_flag |= IN_CHANGE;
-	vput(tvp);
-	return error;
+    /*
+     * Write error occurred trying to update the inode
+     * or the directory so must deallocate the inode.
+     */
+    ip->i_e2fs_nlink = 0;
+    ip->i_flag |= IN_CHANGE;
+    vput(tvp);
+    return error;
 }
+
 
 /*
  * Reclaim an inode so that it can be used for other purposes.
@@ -1095,16 +1112,16 @@ int (**ext2fs_vnodeop_p)(void *);
 const struct vnodeopv_entry_desc ext2fs_vnodeop_entries[] = {
 	{ &vop_default_desc, vn_default_error },
 	{ &vop_lookup_desc, ext2fs_lookup },		/* lookup */
-	{ &vop_create_desc, ext2fs_create },		/* create */
+	{ &vop_create_desc, genfs_create },		/* create */
 	{ &vop_mknod_desc, ext2fs_mknod },		/* mknod */
-	{ &vop_open_desc, ext2fs_open },		/* open */
-	{ &vop_close_desc, ufs_close },			/* close */
+	{ &vop_open_desc, genfs_open },		/* open */
+	{ &vop_close_desc, genfs_close },			/* close */
 	{ &vop_access_desc, ext2fs_access },		/* access */
 	{ &vop_accessx_desc, genfs_accessx },		/* accessx */
 	{ &vop_getattr_desc, ext2fs_getattr },		/* getattr */
 	{ &vop_setattr_desc, ext2fs_setattr },		/* setattr */
-	{ &vop_read_desc, ext2fs_read },		/* read */
-	{ &vop_write_desc, ext2fs_write },		/* write */
+	{ &vop_read_desc, genfs_read },		/* read */
+	{ &vop_write_desc, genfs_write },		/* write */
 	{ &vop_fallocate_desc, genfs_eopnotsupp },	/* fallocate */
 	{ &vop_fdiscard_desc, genfs_eopnotsupp },	/* fdiscard */
 	{ &vop_ioctl_desc, ufs_ioctl },			/* ioctl */

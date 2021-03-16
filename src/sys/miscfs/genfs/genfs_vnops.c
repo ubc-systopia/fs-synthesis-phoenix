@@ -80,6 +80,12 @@ __KERNEL_RCSID(0, "$NetBSD: genfs_vnops.c,v 1.210 2020/09/05 16:30:12 riastradh 
 #include <miscfs/genfs/genfs_node.h>
 #include <miscfs/specfs/specdev.h>
 
+#ifdef UVMHIST
+#include <uvm/uvm.h>
+#endif
+#include <uvm/uvm_page.h>
+#include <uvm/uvm_stat.h>
+
 static void filt_genfsdetach(struct knote *);
 static int filt_genfsread(struct knote *, long);
 static int filt_genfsvnode(struct knote *, long);
@@ -452,12 +458,13 @@ genfs_null_putpages(void *v)
 }
 
 void
-genfs_node_init(struct vnode *vp, const struct genfs_ops *ops)
+genfs_node_init(struct vnode *vp, const struct genfs_ops *ops, const struct genfs_mops *mops)
 {
 	struct genfs_node *gp = VTOG(vp);
 
 	rw_init(&gp->g_glock);
 	gp->g_op = ops;
+    gp->g_mop = mops;
 }
 
 void
@@ -1465,4 +1472,423 @@ genfs_pathconf(void *v)
 	default:
 		return EINVAL;
 	}
+}
+
+/*
+ *   FS-indepent code for open() call
+ *   MOPs called:
+ *      MOP_OPEN_OPT - do the permission checks
+ *   Return 0 on success or appropriate error code
+ */
+
+int
+genfs_open(void *v)
+{
+    struct vop_open_args *a = v;
+    struct vnode *vp = a->a_vp;
+    int mode = a->a_mode, error = 0;
+    
+    if ((error = MOP_OPEN_OPT(vp, mode)) != 0) {
+        return error;
+    }
+    
+    return 0;
+}
+
+/*
+ *   FS-indepent code for close() call
+ *   MOPs called:
+ *      MOP_CLOSE_UPDATE - do the timestamp updates
+ *   Return 0 on success or appropriate error code
+ */
+int
+genfs_close(void *v)
+{
+    struct vop_close_args *a = v;
+    struct vnode *vp = a->a_vp;
+    
+    MOP_CLOSE_UPDATE(vp);
+    
+    return 0;
+}
+
+/*
+ *   FS-indepent code for create() call
+ *   MOPs called:
+ *      MOP_CREATE_ROOTSIZE - if the root directory cannot grow, make appropriate checks
+ *      MOP_CREATE_NEWVNODE - allocate a new vnode with a new file, initialized
+ *      MOP_CREATE - create the structure associated with the file (i.e. inode, etc)
+ *      MOP_POSTCREATE_UPDATE - update the timestamp
+ *      MOP_POSTCREATE_UNLOCK - returns 1 when VOP_UNLOCK needs to be called, 0 otherwise
+ *   Return 0 on success or appropriate error code
+ */
+int
+genfs_create(void *v)
+{
+    struct vop_create_v3_args *a = v;
+    struct vnode *dvp = a->a_dvp;
+    struct vnode **vpp = a->a_vpp;
+    struct componentname *cnp = a->a_cnp;
+    struct vattr *vap = a->a_vap;
+    int unlock = 1;
+    int error = 0;
+    
+    // At this point needed for msdosfs, since its root directory cannot grow
+    if ((error = MOP_CREATE_ROOTSIZE(dvp)))
+        return error;
+    
+    /* If the FS invokes vcache_new(), it can be done on the FS-independent level;
+       otherwise, vcache_get() is called inside the MOP_CREATE() call and
+       requires FS-specific data
+     */
+    if ((error = MOP_GET_NEWVNODE(dvp, vpp, vap, cnp)))
+        return error;
+    
+    error = MOP_CREATE(dvp, vpp, cnp, vap);
+    MOP_POSTCREATE_UPDATE(vpp);
+    
+    cache_enter(dvp, *vpp, cnp->cn_nameptr, cnp->cn_namelen, cnp->cn_flags);
+    
+    VN_KNOTE(dvp, NOTE_WRITE);
+    
+    if (error == 0 && (unlock = MOP_POSTCREATE_UNLOCK())) {
+        VOP_UNLOCK(*vpp);
+    }
+    
+    return error;
+}
+
+
+/*
+ *   FS-indepent code for open() call
+ *   MOPs called:
+ *      MOP_CHECK_MAXSIZE - check whether trying to read more than the max size of a file
+ *      MOP_GET_FILESIZE - return the file size
+ *      MOP_FILEREAD - the read routine (for files)
+ *      MOP_DIRREAD - the read routines (for directories, if they are treated differently)
+ *      MOP_POSTREAD_UPDATE - do the appropriate updates after read (i.e. timestamp, etc)
+ *   Return 0 on success or appropriate error code
+ */
+int
+genfs_read(void *v)
+{
+    struct vop_read_args *a = v;
+    struct vnode *vp = a->a_vp;
+    struct uio *uio = a->a_uio;
+    int ioflag = a->a_ioflag;
+    int error = 0;
+    vsize_t filesize;
+    
+    if (uio->uio_resid == 0)
+        return (0);
+    if (uio->uio_offset < 0)
+        return (EINVAL);
+    
+    if ((error = MOP_CHECK_MAXSIZE(vp, uio)) != 0) {
+        return error;
+    }
+    
+    filesize = MOP_GET_FILESIZE(vp);
+    
+    if (vp->v_type == VREG) {
+        error = MOP_FILEREAD(vp, uio, ioflag, filesize);
+    } else if (vp->v_type == VDIR) {
+        error = MOP_DIRREAD(vp, uio, ioflag, filesize);
+    }
+    
+    error = MOP_POSTREAD_UPDATE(vp, ioflag, error);
+    
+    return error;
+}
+
+/*
+ *   FS-indepent code for open() call
+ *   MOPs called:
+ *      MOP_GET_FILESIZE - return file size
+ *      MOP_WRITE_CHECK - perform appropriate checks before write operation
+ *      MOP_FILE_HOLES - if FS does not support scarce files, fill the holes with 0's
+ *      MOP_GET_BLKOFF - get the offset into the FS block
+ *      MOP_GET_BYTELEN - get the number of bytes to write
+ *      MOP_BALLOC - allocate a new block if neccessary
+ *      MOP_ROUND - round to the block size
+ *      MOP_POSTWRITE_UPDATE - perform appropriate updates (i.e. timestamp, etc)
+ *      MOP_POSTWRITE_TRUNCATE - truncate the file when write fails if needed
+ *   Return 0 on success or appropriate error code
+ */
+int
+genfs_write(void *v)
+{
+    struct vop_write_args *a = v;
+    struct vnode *vp = a->a_vp;
+    struct uio *uio = a->a_uio;
+    int ioflag = a->a_ioflag;
+    int error = 0;
+    kauth_cred_t cred = a->a_cred;
+    
+    off_t osize = (off_t) MOP_GET_FILESIZE(vp);
+    int blkoffset, resid = uio->uio_resid;
+    vsize_t bytelen = 0;
+    off_t oldoff = 0;                    /* XXX */
+    bool async = vp->v_mount->mnt_flag & MNT_ASYNC;
+    int extended = 0;
+    int advice = IO_ADV_DECODE(ioflag);
+
+
+    KASSERT(uio->uio_rw == UIO_WRITE);
+    KASSERT(vp->v_type == VREG);
+
+    if (uio->uio_resid == 0) {
+        return 0;
+    }
+
+    if ((error = MOP_WRITE_CHECKS(vp, uio, cred, ioflag)) != 0) {
+        return error;
+    }
+    
+    if (vp->v_sflag == 0) {
+        if ((error = MOP_FILL_HOLES(vp, uio, cred)) != 0) {
+            return error;
+        }
+    }
+    
+    while (uio->uio_resid > 0) {
+        oldoff = uio->uio_offset;
+        blkoffset = MOP_GET_BLKOFF(vp, uio);
+        bytelen = MOP_GET_BYTELEN(vp, blkoffset, uio);
+        
+        if (vp->v_size < oldoff + bytelen) {
+            uvm_vnp_setwritesize(vp, oldoff + bytelen);
+        }
+        
+        if ((error = MOP_BALLOC(vp, uio, bytelen, cred)) != 0)
+            break;
+
+        if ((error = ubc_uiomove(&vp->v_uobj, uio, bytelen, advice,
+            UBC_WRITE | UBC_VNODE_FLAGS(vp))) != 0)
+            break;
+        
+        /*
+         * update UVM's notion of the size now that we've
+         * copied the data into the vnode's pages.
+         */
+
+        if (vp->v_size < uio->uio_offset) {
+            uvm_vnp_setsize(vp, uio->uio_offset);
+            extended = 1;
+        }
+        
+        /*
+         * flush what we just wrote if necessary.
+         * XXXUBC simplistic async flushing.
+         */
+
+        if (!async && oldoff >> 16 != uio->uio_offset >> 16) {
+            rw_enter(vp->v_uobj.vmobjlock, RW_WRITER);
+            error = VOP_PUTPAGES(vp, (oldoff >> 16) << 16,
+                (uio->uio_offset >> 16) << 16,
+                PGO_CLEANIT | PGO_LAZY);
+        }
+    }
+    
+    if (error == 0 && ioflag & IO_SYNC) {
+        rw_enter(vp->v_uobj.vmobjlock, RW_WRITER);
+        error = VOP_PUTPAGES(vp, trunc_page(oldoff),
+            round_page(MOP_ROUND(vp, uio)),
+            PGO_CLEANIT | PGO_SYNCIO);
+    }
+    
+    MOP_POSTWRITE_UPDATE(vp, uio, cred, resid);
+    
+    /* If we successfully wrote anything, notify kevent listeners.  */
+    if (resid > uio->uio_resid)
+        VN_KNOTE(vp, NOTE_WRITE | (extended ? NOTE_EXTEND : 0));
+    
+    error = MOP_POSTWRITE_TRUNCATE(vp, uio, ioflag, cred, osize, resid, error);
+    
+    /* Make sure the vnode uvm size matches the file size.  */
+    //KASSERT(vp->v_size == MOP_GET_FILESIZE(vp));
+    
+    return error;
+}
+
+
+// Common MOP functions
+int genfs_read_common(struct vnode *vp, struct uio *uio, int ioflag, vsize_t filesize)
+{
+    int error = 0;
+    vsize_t bytelen;
+    const int advice = IO_ADV_DECODE(ioflag);
+    
+    while (uio->uio_resid > 0) {
+        if ((bytelen = MIN(filesize - uio->uio_offset, uio->uio_resid)) == 0)
+            break;
+
+        error = ubc_uiomove(&vp->v_uobj, uio, bytelen, advice, UBC_READ |
+            UBC_PARTIALOK | UBC_VNODE_FLAGS(vp));
+        if (error) {
+            break;
+        }
+    }
+    
+    return error;
+}
+
+int genfs_new_vnode(struct vnode* dvp, struct vnode** vpp, struct vattr* vap, struct componentname* cnp)
+{
+    int error = 0;
+    
+    if ((error = vcache_new(dvp->v_mount, dvp, vap, cnp->cn_cred, NULL, vpp)))
+        return error;
+    
+    if ((error = vn_lock(*vpp, LK_EXCLUSIVE)))
+    {
+        vrele(*vpp);
+        return error;
+    }
+    
+    return error;
+}
+
+/*
+    Originally ufs_balloc_range(); brought up here due to its FS-independent nature
+ */
+int genfs_balloc_range(struct vnode *vp, off_t off, off_t len, kauth_cred_t cred,
+                       int flags)
+{
+    off_t neweof;    /* file size after the operation */
+    off_t neweob;    /* offset next to the last block after the operation */
+    off_t pagestart; /* starting offset of range covered by pgs */
+    off_t eob;    /* offset next to allocated blocks */
+    struct uvm_object *uobj;
+    int i, delta, error, npages;
+    int bshift = vp->v_mount->mnt_fs_bshift;
+    int bsize = 1 << bshift;
+    int ppb = MAX(bsize >> PAGE_SHIFT, 1);
+    struct vm_page **pgs;
+    size_t pgssize;
+    UVMHIST_FUNC("ufs_balloc_range"); UVMHIST_CALLED(ubchist);
+    UVMHIST_LOG(ubchist, "vp %#jx off 0x%jx len 0x%jx u_size 0x%jx",
+            (uintptr_t)vp, off, len, vp->v_size);
+
+    neweof = MAX(vp->v_size, off + len);
+    GOP_SIZE(vp, neweof, &neweob, 0);
+
+    error = 0;
+    uobj = &vp->v_uobj;
+
+    /*
+     * read or create pages covering the range of the allocation and
+     * keep them locked until the new block is allocated, so there
+     * will be no window where the old contents of the new block are
+     * visible to racing threads.
+     */
+
+    pagestart = trunc_page(off) & ~(bsize - 1);
+    npages = MIN(ppb, (round_page(neweob) - pagestart) >> PAGE_SHIFT);
+    pgssize = npages * sizeof(struct vm_page *);
+    pgs = kmem_zalloc(pgssize, KM_SLEEP);
+
+    /*
+     * adjust off to be block-aligned.
+     */
+
+    delta = off & (bsize - 1);
+    off -= delta;
+    len += delta;
+
+    genfs_node_wrlock(vp);
+    rw_enter(uobj->vmobjlock, RW_WRITER);
+    error = VOP_GETPAGES(vp, pagestart, pgs, &npages, 0,
+        VM_PROT_WRITE, 0, PGO_SYNCIO | PGO_PASTEOF | PGO_NOBLOCKALLOC |
+        PGO_NOTIMESTAMP | PGO_GLOCKHELD);
+    if (error) {
+        genfs_node_unlock(vp);
+        goto out;
+    }
+
+    /*
+     * now allocate the range.
+     */
+
+    error = GOP_ALLOC(vp, off, len, flags, cred);
+    genfs_node_unlock(vp);
+
+    /*
+     * if the allocation succeeded, mark all the pages dirty
+     * and clear PG_RDONLY on any pages that are now fully backed
+     * by disk blocks.  if the allocation failed, we do not invalidate
+     * the pages since they might have already existed and been dirty,
+     * in which case we need to keep them around.  if we created the pages,
+     * they will be clean and read-only, and leaving such pages
+     * in the cache won't cause any problems.
+     */
+
+    GOP_SIZE(vp, off + len, &eob, 0);
+    rw_enter(uobj->vmobjlock, RW_WRITER);
+    for (i = 0; i < npages; i++) {
+        KASSERT((pgs[i]->flags & PG_RELEASED) == 0);
+        if (!error) {
+            if (off <= pagestart + (i << PAGE_SHIFT) &&
+                pagestart + ((i + 1) << PAGE_SHIFT) <= eob) {
+                pgs[i]->flags &= ~PG_RDONLY;
+            }
+            uvm_pagemarkdirty(pgs[i], UVM_PAGE_STATUS_DIRTY);
+        }
+        uvm_pagelock(pgs[i]);
+        uvm_pageactivate(pgs[i]);
+        uvm_pageunlock(pgs[i]);
+    }
+    uvm_page_unbusy(pgs, npages);
+    rw_exit(uobj->vmobjlock);
+
+ out:
+     kmem_free(pgs, pgssize);
+    return error;
+}
+
+// Common null functions as to not implement them at the FS level
+int genfs_open_opt_null(struct vnode* vp, int mode)
+{
+    return 0;
+}
+
+int genfs_new_vnode_null(struct vnode* dvp, struct vnode** vpp, struct vattr* vap, struct componentname* cnp)
+{
+    return 0;
+}
+
+int genfs_create_rootsize_null(struct vnode* vp)
+{
+    return 0;
+}
+
+void genfs_postcreate_update_null(struct vnode** vpp)
+{
+    return;
+}
+
+int genfs_check_maxsize_null(struct vnode* vp, struct uio* uio)
+{
+    return 0;
+}
+
+int genfs_fill_holes_null(struct vnode *vp, struct uio *uio, kauth_cred_t cred)
+{
+    return 0;
+}
+
+int genfs_null_postwrite_truncate(struct vnode *vp, struct uio *uio, int ioflag, kauth_cred_t cred, off_t osize, int resid, int oerror)
+{
+    int error = oerror;
+    return error;
+}
+
+int genfs_postcreate_unlock_true(void)
+{
+    return 1;
+}
+
+int genfs_postcreate_unlock_false(void)
+{
+    return 0;
 }

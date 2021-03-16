@@ -71,6 +71,8 @@ __KERNEL_RCSID(0, "$NetBSD: msdosfs_denode.c,v 1.59 2020/04/23 21:47:07 ad Exp $
 #include <fs/msdosfs/denode.h>
 #include <fs/msdosfs/fat.h>
 
+#include <miscfs/genfs/genfs.h>
+
 struct pool msdosfs_denode_pool;
 
 struct fh_key {
@@ -126,6 +128,29 @@ static const struct genfs_ops msdosfs_genfsops = {
 	.gop_write = genfs_gop_write,
 	.gop_markupdate = msdosfs_gop_markupdate,
 	.gop_putrange = genfs_gop_putrange,
+};
+
+static const struct genfs_mops msdosfs_genfsmops = {
+    .mop_create_rootsize = msdosfs_mop_create_rootsize,
+    .mop_get_newvnode = genfs_new_vnode_null,
+    .mop_create = msdosfs_mop_create,
+    .mop_postcreate_update = genfs_postcreate_update_null,
+    .mop_open_opt = genfs_open_opt_null,
+    .mop_close_update = msdosfs_mop_close_update,
+    .mop_check_maxsize = msdosfs_mop_check_maxsize,
+    .mop_get_filesize = msdosfs_mop_get_filesize,
+    .mop_dirread = msdosfs_mop_dirread,
+    .mop_fileread = genfs_read_common,
+    .mop_postread_update = msdosfs_mop_postread_update,
+    .mop_write_checks = msdosfs_mop_write_checks,
+    .mop_fill_holes = msdosfs_mop_fill_holes,
+    .mop_get_blkoff = msdosfs_mop_get_clustoff,
+    .mop_get_bytelen = msdosfs_mop_get_bytelen,
+    .mop_balloc = msdosfs_mop_extendfile,
+    .mop_round = msdosfs_mop_round,
+    .mop_postwrite_update = msdosfs_mop_postwrite_update,
+    .mop_postwrite_truncate = msdosfs_mop_postwrite_truncate,
+    .mop_postcreate_unlock = genfs_postcreate_unlock_false,
 };
 
 MALLOC_DECLARE(M_MSDOSFSFAT);
@@ -321,8 +346,9 @@ msdosfs_loadvnode(struct mount *mp, struct vnode *vp,
 	vp->v_tag = VT_MSDOSFS;
 	vp->v_op = msdosfs_vnodeop_p;
 	vp->v_data = ldep;
+    vp->v_sflag = 0;
 	ldep->de_vnode = vp;
-	genfs_node_init(vp, &msdosfs_genfsops);
+	genfs_node_init(vp, &msdosfs_genfsops, &msdosfs_genfsmops);
 	uvm_vnp_setsize(vp, ldep->de_FileSize);
 	*new_key = &ldep->de_key;
 

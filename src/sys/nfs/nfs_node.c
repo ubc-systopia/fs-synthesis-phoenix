@@ -76,6 +76,10 @@ static const struct genfs_ops nfs_genfsops = {
 	.gop_putrange = genfs_gop_putrange,
 };
 
+static const struct genfs_mops nfs_genfsmops = {
+    
+};
+
 /*
  * Reinitialize inode hash table.
  */
@@ -135,7 +139,7 @@ nfs_loadvnode(struct mount *mp, struct vnode *vp,
 	np->n_vnode = vp;
 
 	/* Initialize genfs node. */
-	genfs_node_init(vp, &nfs_genfsops);
+	genfs_node_init(vp, &nfs_genfsops, &nfs_genfsmops);
 	/*
 	 * Initialize read/write creds to useful values. VOP_OPEN will
 	 * overwrite these.

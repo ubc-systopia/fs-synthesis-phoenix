@@ -152,6 +152,30 @@ static const struct genfs_ops ext2fs_genfsops = {
 	.gop_putrange = genfs_gop_putrange,
 };
 
+static const struct genfs_mops ext2fs_genfsmops = {
+    .mop_fileread = genfs_read_common,
+    .mop_dirread = genfs_read_common,
+    .mop_get_filesize = ext2fs_mop_get_filesize,
+    .mop_postread_update = ext2fs_mop_postread_update,
+    .mop_check_maxsize = ext2fs_mop_check_maxsize,
+    .mop_write_checks = ext2fs_mop_write_checks,
+    .mop_fill_holes = genfs_fill_holes_null,
+    .mop_get_blkoff = ext2fs_mop_get_blkoff,
+    .mop_get_bytelen = ext2fs_mop_get_bytelen,
+    .mop_postwrite_update = ext2fs_mop_postwrite_update,
+    .mop_postwrite_truncate = ext2fs_mop_postwrite_truncate,
+    .mop_balloc = ext2fs_mop_balloc_range,
+    .mop_round = ext2fs_mop_round,
+    .mop_open_opt = ext2fs_mop_open_opt,
+    .mop_close_update = ext2fs_mop_close_update,
+    .mop_create_rootsize = genfs_create_rootsize_null,
+    .mop_create = ext2fs_mop_create,
+    .mop_get_newvnode = genfs_new_vnode,
+    .mop_postcreate_update = genfs_postcreate_update_null,
+    .mop_postcreate_unlock = genfs_postcreate_unlock_true,
+    
+};
+
 static const struct ufs_ops ext2fs_ufsops = {
 	.uo_itimes = ext2fs_itimes,
 	.uo_update = ext2fs_update,
@@ -1018,9 +1042,10 @@ ext2fs_init_vnode(struct ufsmount *ump, struct vnode *vp, ino_t ino)
 	vp->v_op = ext2fs_vnodeop_p;
 	vp->v_vflag |= VV_LOCKSWORK;
 	vp->v_data = ip;
+    vp->v_sflag = 1;
 
 	/* Initialize genfs node. */
-	genfs_node_init(vp, &ext2fs_genfsops);
+	genfs_node_init(vp, &ext2fs_genfsops, &ext2fs_genfsmops);
 
 	return 0;
 }
@@ -1344,7 +1369,11 @@ ext2fs_sbfill(struct m_ext2fs *m_fs, int ronly)
 	}
 
 	m_fs->e2fs_fsbtodb = fs->e2fs_log_bsize + LOG_MINBSIZE - DEV_BSHIFT;
+    // log_bsize is either 0, 1, 2
+    // we need to adjust the block size accordingly (1024, 2048, 4096)
 	m_fs->e2fs_bsize = MINBSIZE << fs->e2fs_log_bsize;
+    // bshift needs to be adjusted accordingly (10, 11, 12)
+    // bshift can be interpreted as x in 2^x
 	m_fs->e2fs_bshift = LOG_MINBSIZE + fs->e2fs_log_bsize;
 	m_fs->e2fs_qbmask = m_fs->e2fs_bsize - 1;
 	m_fs->e2fs_bmask = ~m_fs->e2fs_qbmask;

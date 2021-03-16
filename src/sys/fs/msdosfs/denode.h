@@ -49,6 +49,8 @@
 #ifndef _MSDOSFS_DENODE_H_
 #define _MSDOSFS_DENODE_H_
 
+#include <sys/types.h>
+
 #ifndef MAKEFS
 #include <miscfs/genfs/genfs_node.h>
 #else
@@ -57,6 +59,10 @@ struct genfs_node {
 struct vnode;
 struct msdosfsmount;
 struct buf;
+struct uio;
+struct vattr;
+struct kauth_cred;
+typedef unsigned long vsize_t;
 #endif
 
 /*
@@ -204,6 +210,8 @@ struct denode {
 /* Maximum size of a file on a FAT filesystem */
 #define MSDOSFS_FILESIZE_MAX	0xFFFFFFFFLL
 
+#define msdosfs_filesize(i) ((i)->de_FileSize)
+
 /*
  * Transfer directory entries between internal and external form.
  * dep is a struct denode * (internal form),
@@ -256,6 +264,8 @@ struct denode {
 	while ((dep)->de_flag & (DE_UPDATE | DE_CREATE | DE_ACCESS)) \
 		msdosfs_detimes(dep, acc, mod, cre, gmtoff)
 
+
+
 /*
  * This overlays the fid structure (see fstypes.h)
  */
@@ -268,17 +278,19 @@ struct defid {
 	u_int32_t defid_gen;	/* generation number */
 };
 
+struct componentname;
+struct direntry;
+struct kauth_cred;
+
 /*
  * Prototypes for MSDOSFS vnode operations
+ * Original msdosfs functions
  */
 int	msdosfs_lookup		(void *);
 int	msdosfs_create		(void *);
-int	msdosfs_close		(void *);
 int	msdosfs_access		(void *);
 int	msdosfs_getattr		(void *);
 int	msdosfs_setattr		(void *);
-int	msdosfs_read		(void *);
-int	msdosfs_write		(void *);
 #define	msdosfs_lease_check	genfs_lease_check
 #define	msdosfs_ioctl		genfs_enoioctl
 #define	msdosfs_poll		genfs_poll
@@ -300,12 +312,38 @@ int	msdosfs_print		(void *);
 int	msdosfs_advlock		(void *);
 int	msdosfs_pathconf	(void *);
 
+/* MOP functions introduced */
+
+// MOP function(s) related to create()
+int msdosfs_mop_create_rootsize(struct vnode *);
+int msdosfs_mop_create(struct vnode *, struct vnode **, struct componentname *, struct vattr *);
+// Create() helper function(s)
+int msdosfs_create_setattr(struct denode *, struct denode *, struct vattr *, struct componentname *);
+
+// MOP function(s) related to close()
+void msdosfs_mop_close_update(struct vnode *);
+
+// MOP function(s) related to read()
+int msdosfs_mop_check_maxsize(struct vnode* vp, struct uio* uio);
+vsize_t msdosfs_mop_get_filesize(struct vnode *);
+int msdosfs_mop_dirread(struct vnode *, struct uio *, int, vsize_t);
+int msdosfs_mop_postread_update(struct vnode *, int, int);
+
+// MOP function(s) related to write()
+
+int msdosfs_mop_write_checks(struct vnode *, struct uio *, struct kauth_cred *, int);
+int msdosfs_mop_fill_holes(struct vnode *, struct uio *, struct kauth_cred *);
+int msdosfs_mop_get_clustoff(struct vnode *, struct uio *);
+vsize_t msdosfs_mop_get_bytelen(struct vnode *, int, struct uio *);
+int msdosfs_mop_extendfile(struct vnode *, struct uio *, vsize_t, struct kauth_cred*);
+vsize_t msdosfs_mop_round(struct vnode *, struct uio *);
+void msdosfs_mop_postwrite_update(struct vnode *, struct uio *, struct kauth_cred*, int);
+int msdosfs_mop_postwrite_truncate(struct vnode *, struct uio *, int, struct kauth_cred*, off_t, int, int);
+
 /*
  * Internal service routine prototypes.
  */
-struct componentname;
-struct direntry;
-struct kauth_cred;
+
 int msdosfs_update(struct vnode *, const struct timespec *,
 	    const struct timespec *, int);
 int createde(struct denode *, struct denode *,
@@ -334,5 +372,6 @@ int msdosfs_fh_enter(struct msdosfsmount *, uint32_t, uint32_t, uint32_t *);
 int msdosfs_fh_remove(struct msdosfsmount *, uint32_t, uint32_t);
 int msdosfs_fh_lookup(struct msdosfsmount *, uint32_t, uint32_t, uint32_t *);
 void msdosfs_fh_destroy(struct msdosfsmount *);
+
 #endif	/* _KERNEL || MAKEFS */
 #endif /* _MSDOSFS_DENODE_H_ */

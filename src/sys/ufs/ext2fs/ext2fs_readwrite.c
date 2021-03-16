@@ -81,93 +81,192 @@ __KERNEL_RCSID(0, "$NetBSD: ext2fs_readwrite.c,v 1.77 2020/04/23 21:47:08 ad Exp
 #include <ufs/ext2fs/ext2fs.h>
 #include <ufs/ext2fs/ext2fs_extern.h>
 
-static int	ext2fs_post_read_update(struct vnode *, int, int);
-static int	ext2fs_post_write_update(struct vnode *, struct uio *, int,
-		    kauth_cred_t, off_t, int, int, int);
+#include <miscfs/genfs/genfs.h>
 
-/*
- * Vnode op for reading.
- */
-/* ARGSUSED */
 int
-ext2fs_read(void *v)
+ext2fs_post_read_update(struct vnode *vp, int ioflag, int oerror);
+int
+ext2fs_post_write_update(struct vnode *vp, struct uio *uio, int ioflag,
+                         kauth_cred_t cred, off_t osize, int resid, int extended, int oerror);
+
+/* MOP functions introduced */
+
+// MOP and helper function(s) related to read()
+
+int ext2fs_mop_check_maxsize(struct vnode* vp, struct uio* uio)
 {
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int a_ioflag;
-		kauth_cred_t a_cred;
-	} */ *ap = v;
-	struct vnode *vp;
-	struct inode *ip;
-	struct uio *uio;
-	struct ufsmount *ump;
-	vsize_t bytelen;
-	int advice;
-	int error;
-
-	vp = ap->a_vp;
-	ip = VTOI(vp);
-	ump = ip->i_ump;
-	uio = ap->a_uio;
-	error = 0;
-
-	KASSERT(uio->uio_rw == UIO_READ);
-	KASSERT(vp->v_type == VREG || vp->v_type == VDIR);
-
-	/* XXX Eliminate me by refusing directory reads from userland.  */
-	if (vp->v_type == VDIR)
-		return ext2fs_bufrd(vp, uio, ap->a_ioflag, ap->a_cred);
-
-	if ((uint64_t)uio->uio_offset > ump->um_maxfilesize)
-		return EFBIG;
-	if (uio->uio_resid == 0)
-		return 0;
-	if (uio->uio_offset >= ext2fs_size(ip))
-		goto out;
-
-	KASSERT(vp->v_type == VREG);
-	advice = IO_ADV_DECODE(ap->a_ioflag);
-	while (uio->uio_resid > 0) {
-		bytelen = MIN(ext2fs_size(ip) - uio->uio_offset,
-			    uio->uio_resid);
-		if (bytelen == 0)
-			break;
-
-		error = ubc_uiomove(&vp->v_uobj, uio, bytelen, advice,
-		    UBC_READ | UBC_PARTIALOK | UBC_VNODE_FLAGS(vp));
-		if (error)
-			break;
-	}
-
-out:
-	error = ext2fs_post_read_update(vp, ap->a_ioflag, error);
-	return error;
+    struct inode *ip = VTOI(vp);
+    struct ufsmount *ump = ip->i_ump;
+    int error = 0;
+    
+    if ((uint64_t)uio->uio_offset > ump->um_maxfilesize)
+        return EFBIG;
+    
+    return error;
 }
+
+unsigned long ext2fs_mop_get_filesize(struct vnode* vp)
+{
+    struct inode *ip = VTOI(vp);
+    vsize_t filesize = ext2fs_size(ip);
+    
+    return filesize;
+}
+
+int
+ext2fs_mop_postread_update(struct vnode *vp, int ioflag, int oerror)
+{
+    struct inode *ip = VTOI(vp);
+    int error = oerror;
+
+    if (!(vp->v_mount->mnt_flag & MNT_NOATIME)) {
+        ip->i_flag |= IN_ACCESS;
+        if ((ioflag & IO_SYNC) == IO_SYNC)
+            error = ext2fs_update(vp, NULL, NULL, UPDATE_WAIT);
+    }
+
+    /* Read error overrides any inode update error.  */
+    if (oerror)
+        error = oerror;
+    return error;
+}
+
+// MOP and helper function(s) related to write()
+
+int ext2fs_mop_write_checks(struct vnode *vp, struct uio *uio, kauth_cred_t cred, int ioflag)
+{
+    struct inode *ip = VTOI(vp);
+    struct ufsmount *ump = ip->i_ump;
+    
+    if (ioflag & IO_APPEND)
+        uio->uio_offset = ext2fs_size(ip);
+    
+    if ((ip->i_e2fs_flags & EXT2_APPEND) &&
+        uio->uio_offset != ext2fs_size(ip))
+        return EPERM;
+    
+    if (uio->uio_offset < 0 ||
+        (uint64_t)uio->uio_offset + uio->uio_resid > ump->um_maxfilesize)
+        return EFBIG;
+    
+    return 0;
+}
+
+int ext2fs_mop_get_blkoff(struct vnode* vp, struct uio* uio)
+{
+    struct inode *ip = VTOI(vp);
+    struct m_ext2fs *fs = ip->i_e2fs;
+    int blkoff = ext2_blkoff(fs, uio->uio_offset);
+    
+    return blkoff;
+}
+
+vsize_t ext2fs_mop_get_bytelen (struct vnode *vp, int blkoffset, struct uio *uio)
+{
+    struct inode *ip = VTOI(vp);
+    struct m_ext2fs *fs = ip->i_e2fs;
+    vsize_t bytelen = MIN(fs->e2fs_bsize - blkoffset, uio->uio_resid);
+    
+    return bytelen;
+}
+
+int ext2fs_mop_balloc_range(struct vnode* vp, struct uio* uio, vsize_t bytelen, kauth_cred_t cred)
+{
+    return genfs_balloc_range(vp, uio->uio_offset, bytelen, cred, 0);
+}
+
+vsize_t ext2fs_mop_round(struct vnode* vp, struct uio* uio)
+{
+    struct inode *ip = VTOI(vp);
+    struct m_ext2fs *fs = ip->i_e2fs;
+    vsize_t rounded = ext2_blkroundup(fs, uio->uio_offset);
+    
+    return rounded;
+}
+
+void
+ext2fs_mop_postwrite_update(struct vnode* vp, struct uio* uio, kauth_cred_t cred, int resid)
+{
+    struct inode *ip = VTOI(vp);
+
+    /* Trigger ctime and mtime updates, and atime if MNT_RELATIME.  */
+    ip->i_flag |= IN_CHANGE | IN_UPDATE;
+    if (vp->v_mount->mnt_flag & MNT_RELATIME)
+        ip->i_flag |= IN_ACCESS;
+
+    /*
+     * If we successfully wrote any data and we are not the superuser,
+     * we clear the setuid and setgid bits as a precaution against
+     * tampering.
+     */
+    if (resid > uio->uio_resid && cred) {
+        if (ip->i_e2fs_mode & ISUID) {
+            if (kauth_authorize_vnode(cred,
+                KAUTH_VNODE_RETAIN_SUID, vp, NULL, EPERM) != 0)
+                ip->i_e2fs_mode &= ISUID;
+        }
+
+        if (ip->i_e2fs_mode & ISGID) {
+            if (kauth_authorize_vnode(cred,
+                KAUTH_VNODE_RETAIN_SGID, vp, NULL, EPERM) != 0)
+                ip->i_e2fs_mode &= ~ISGID;
+        }
+    }
+}
+
+int
+ext2fs_mop_postwrite_truncate(struct vnode *vp, struct uio *uio, int ioflag,
+    kauth_cred_t cred, off_t osize, int resid, int oerror)
+{
+    int error = oerror;
+
+    /*
+     * Update the size on disk: truncate back to original size on
+     * error, or reflect the new size on success.
+     */
+    if (error) {
+        (void) ext2fs_truncate(vp, osize, ioflag & IO_SYNC, cred);
+        uio->uio_offset -= resid - uio->uio_resid;
+        uio->uio_resid = resid;
+    } else if (resid > uio->uio_resid && (ioflag & IO_SYNC) == IO_SYNC)
+        error = ext2fs_update(vp, NULL, NULL, UPDATE_WAIT);
+
+
+    /* Write error overrides any inode update error.  */
+    if (oerror)
+        error = oerror;
+    return error;
+}
+
+/* Original ext2fs functions */
 
 /*
  * UFS op for reading via the buffer cache
  */
+
 int
 ext2fs_bufrd(struct vnode *vp, struct uio *uio, int ioflag, kauth_cred_t cred)
 {
-	struct inode *ip;
-	struct ufsmount *ump;
-	struct m_ext2fs *fs;
+	struct inode *ip = VTOI(vp);
+	struct ufsmount *ump = ip->i_ump;
+	struct m_ext2fs *fs = ip->i_e2fs;
 	struct buf *bp;
 	off_t bytesinfile;
 	daddr_t lbn, nextlbn;
 	long size, xfersize, blkoffset;
-	int error;
+	int error = 0;
 
 	KASSERT(uio->uio_rw == UIO_READ);
 	KASSERT(VOP_ISLOCKED(vp));
 	KASSERT(vp->v_type == VDIR || vp->v_type == VLNK);
+    
+    if ((uint64_t)uio->uio_offset > ump->um_maxfilesize)
+        return EFBIG;
+    if (uio->uio_resid == 0)
+        return error;
+    if (uio->uio_offset >= ext2fs_size(ip))
+        return error;
 
-	ip = VTOI(vp);
-	ump = ip->i_ump;
-	fs = ip->i_e2fs;
-	error = 0;
 
 	KASSERT(vp->v_type != VLNK ||
 	    ext2fs_size(ip) >= ump->um_maxsymlinklen);
@@ -211,7 +310,8 @@ ext2fs_bufrd(struct vnode *vp, struct uio *uio, int ioflag, kauth_cred_t cred)
 		 * However, if the short read did not cause an error,
 		 * then we want to ensure that we do not uiomove bad
 		 * or uninitialized data.
-		 */
+         */
+		 
 		size -= bp->b_resid;
 		if (size < xfersize) {
 			if (size == 0)
@@ -231,7 +331,7 @@ out:
 	return error;
 }
 
-static int
+int
 ext2fs_post_read_update(struct vnode *vp, int ioflag, int oerror)
 {
 	struct inode *ip = VTOI(vp);
@@ -246,111 +346,6 @@ ext2fs_post_read_update(struct vnode *vp, int ioflag, int oerror)
 	/* Read error overrides any inode update error.  */
 	if (oerror)
 		error = oerror;
-	return error;
-}
-
-/*
- * Vnode op for writing.
- */
-int
-ext2fs_write(void *v)
-{
-	struct vop_write_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int a_ioflag;
-		kauth_cred_t a_cred;
-	} */ *ap = v;
-	struct vnode *vp;
-	struct uio *uio;
-	struct inode *ip;
-	struct m_ext2fs *fs;
-	struct ufsmount *ump;
-	off_t osize;
-	int blkoffset, error, ioflag, resid;
-	vsize_t bytelen;
-	off_t oldoff = 0;					/* XXX */
-	bool async;
-	int extended = 0;
-	int advice;
-
-	ioflag = ap->a_ioflag;
-	advice = IO_ADV_DECODE(ioflag);
-	uio = ap->a_uio;
-	vp = ap->a_vp;
-	ip = VTOI(vp);
-	ump = ip->i_ump;
-	error = 0;
-
-	KASSERT(uio->uio_rw == UIO_WRITE);
-	KASSERT(vp->v_type == VREG);
-
-	if (ioflag & IO_APPEND)
-		uio->uio_offset = ext2fs_size(ip);
-	if ((ip->i_e2fs_flags & EXT2_APPEND) &&
-	    uio->uio_offset != ext2fs_size(ip))
-		return EPERM;
-
-	fs = ip->i_e2fs;
-	if (uio->uio_offset < 0 ||
-	    (uint64_t)uio->uio_offset + uio->uio_resid > ump->um_maxfilesize)
-		return EFBIG;
-	if (uio->uio_resid == 0)
-		return 0;
-
-	async = vp->v_mount->mnt_flag & MNT_ASYNC;
-	resid = uio->uio_resid;
-	osize = ext2fs_size(ip);
-
-	KASSERT(vp->v_type == VREG);
-	while (uio->uio_resid > 0) {
-		oldoff = uio->uio_offset;
-		blkoffset = ext2_blkoff(fs, uio->uio_offset);
-		bytelen = MIN(fs->e2fs_bsize - blkoffset, uio->uio_resid);
-
-		if (vp->v_size < oldoff + bytelen) {
-			uvm_vnp_setwritesize(vp, oldoff + bytelen);
-		}
-		error = ufs_balloc_range(vp, uio->uio_offset, bytelen,
-		    ap->a_cred, 0);
-		if (error)
-			break;
-		error = ubc_uiomove(&vp->v_uobj, uio, bytelen, advice,
-		    UBC_WRITE | UBC_VNODE_FLAGS(vp));
-		if (error)
-			break;
-
-		/*
-		 * update UVM's notion of the size now that we've
-		 * copied the data into the vnode's pages.
-		 */
-
-		if (vp->v_size < uio->uio_offset) {
-			uvm_vnp_setsize(vp, uio->uio_offset);
-			extended = 1;
-		}
-
-		/*
-		 * flush what we just wrote if necessary.
-		 * XXXUBC simplistic async flushing.
-		 */
-
-		if (!async && oldoff >> 16 != uio->uio_offset >> 16) {
-			rw_enter(vp->v_uobj.vmobjlock, RW_WRITER);
-			error = VOP_PUTPAGES(vp, (oldoff >> 16) << 16,
-			    (uio->uio_offset >> 16) << 16,
-			    PGO_CLEANIT | PGO_LAZY);
-		}
-	}
-	if (error == 0 && ioflag & IO_SYNC) {
-		rw_enter(vp->v_uobj.vmobjlock, RW_WRITER);
-		error = VOP_PUTPAGES(vp, trunc_page(oldoff),
-		    round_page(ext2_blkroundup(fs, uio->uio_offset)),
-		    PGO_CLEANIT | PGO_SYNCIO);
-	}
-
-	error = ext2fs_post_write_update(vp, uio, ioflag, ap->a_cred, osize,
-	    resid, extended, error);
 	return error;
 }
 
@@ -436,7 +431,7 @@ ext2fs_bufwr(struct vnode *vp, struct uio *uio, int ioflag, kauth_cred_t cred)
 	return error;
 }
 
-static int
+int
 ext2fs_post_write_update(struct vnode *vp, struct uio *uio, int ioflag,
     kauth_cred_t cred, off_t osize, int resid, int extended, int oerror)
 {

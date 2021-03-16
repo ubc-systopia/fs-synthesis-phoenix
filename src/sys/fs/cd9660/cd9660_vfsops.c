@@ -120,6 +120,9 @@ static const struct genfs_ops cd9660_genfsops = {
 	.gop_size = genfs_size,
 };
 
+struct genfs_mops cd9660fs_genfsmops = {
+};
+
 /*
  * Called by vfs_mountroot when iso is going to be mounted as root.
  *
@@ -773,7 +776,7 @@ cd9660_loadvnode(struct mount *mp, struct vnode *vp,
 	vp->v_tag = VT_ISOFS;
 	vp->v_op = cd9660_vnodeop_p;
 	vp->v_data = ip;
-	genfs_node_init(vp, &cd9660_genfsops);
+	genfs_node_init(vp, &cd9660_genfsops, &cd9660fs_genfsmops);
 
 	/*
 	 * Setup time stamp, attribute

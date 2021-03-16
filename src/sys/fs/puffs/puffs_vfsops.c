@@ -79,6 +79,8 @@ static const struct genfs_ops puffs_genfsops = {
 	.gop_putrange = genfs_gop_putrange,
 };
 
+struct genfs_mops puffs_genfsmops = {};
+
 /*
  * Try to ensure data structures used by the puffs protocol
  * do not unexpectedly change.
@@ -766,7 +768,7 @@ puffs_vfsop_loadvnode(struct mount *mp, struct vnode *vp,
 		vp->v_vflag |= VV_ROOT;
 	vp->v_data = pnode;
 
-	genfs_node_init(vp, &puffs_genfsops);
+	genfs_node_init(vp, &puffs_genfsops, &puffs_genfsmops);
 	uvm_vnp_setsize(vp, 0);
 
 	*new_key = &pnode->pn_cookie;

@@ -95,6 +95,7 @@ typedef uint16_t v7fs_mode_t;
 /* cache. */
 #define	V7FS_MAX_FREEBLOCK	50
 #define	V7FS_MAX_FREEINODE	100
+
 struct v7fs_superblock {
 	/* [3 ... (datablock_start_sector-1)]are ilist */
 	uint16_t datablock_start_sector;
@@ -125,6 +126,9 @@ struct v7fs_freeblock {
 	v7fs_daddr_t freeblock[V7FS_MAX_FREEBLOCK];
 } __packed;
 
+#define V7FS_DADDR_SQUARED (V7FS_DADDR_PER_BLOCK*V7FS_DADDR_PER_BLOCK)
+#define V7FS_DADDR_CUBED (V7FS_DADDR_PER_BLOCK*V7FS_DADDR_PER_BLOCK*V7FS_DADDR_PER_BLOCK)
+#define V7FS_MAX_FILESIZE (V7FS_BSIZE * (10 + V7FS_DADDR_PER_BLOCK + V7FS_DADDR_SQUARED + V7FS_DADDR_CUBED))
 
 /* Dirent */
 #define	V7FS_NAME_MAX		14

@@ -43,6 +43,30 @@ int	genfs_null_putpages(void *);
 int	genfs_compat_getpages(void *);
 int	genfs_pathconf(void *v);
 
+
+int genfs_read(void *);
+int genfs_write(void *);
+int genfs_open(void *);
+int genfs_close(void *);
+int genfs_create(void *);
+
+// Common MOP functions
+int genfs_read_common(struct vnode *, struct uio *, int, vsize_t);
+int genfs_new_vnode(struct vnode *, struct vnode**, struct vattr *, struct componentname *);
+int genfs_balloc_range(struct vnode *, off_t, off_t, kauth_cred_t, int);
+int genfs_postcreate_unlock_true(void);
+int genfs_postcreate_unlock_false(void);
+
+// Common null MOP functions
+int genfs_open_opt_null(struct vnode *, int);
+int genfs_new_vnode_null(struct vnode *, struct vnode**, struct vattr *, struct componentname *);
+int genfs_create_rootsize_null(struct vnode *);
+void genfs_postcreate_update_null(struct vnode**);
+int genfs_check_maxsize_null(struct vnode *, struct uio *);
+int genfs_fill_holes_null(struct vnode *, struct uio *, kauth_cred_t);
+int genfs_null_postwrite_truncate(struct vnode *, struct uio *, int, kauth_cred_t, off_t, int, int);
+//--------------------//
+
 int	genfs_do_putpages(struct vnode *, off_t, off_t, int, struct vm_page **);
 
 int	genfs_statvfs(struct mount *, struct statvfs *);

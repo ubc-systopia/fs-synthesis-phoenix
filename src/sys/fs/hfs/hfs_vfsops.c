@@ -176,6 +176,9 @@ static const struct genfs_ops hfs_genfsops = {
 	.gop_size = genfs_size,
 };
 
+struct genfs_mops hfs_genfsmops = {
+};
+
 static int
 hfs_modcmd(modcmd_t cmd, void *arg)
 {
@@ -585,7 +588,7 @@ hfs_loadvnode(struct mount *mp, struct vnode *vp,
 	vp->v_op = hfs_vnodeop_p;
 	vp->v_vflag |= VV_LOCKSWORK;
 	vp->v_data = hnode;
-	genfs_node_init(vp, &hfs_genfsops);
+	genfs_node_init(vp, &hfs_genfsops, &hfs_genfsmops);
 
 	/*
 	 * Initialize the vnode from the hfsnode, check for aliases.

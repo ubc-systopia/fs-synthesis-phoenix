@@ -189,6 +189,9 @@ static const struct ufs_ops ffs_ufsops = {
 	.uo_bufwr = ffs_bufwr,
 };
 
+struct genfs_mops ffs_genfsmops = {
+};
+
 static int
 ffs_checkrange(struct mount *mp, uint32_t ino)
 {
@@ -2068,7 +2071,7 @@ ffs_init_vnode(struct ufsmount *ump, struct vnode *vp, ino_t ino)
 	vp->v_data = ip;
 
 	/* Initialize genfs node. */
-	genfs_node_init(vp, &ffs_genfsops);
+	genfs_node_init(vp, &ffs_genfsops, &ffs_genfsmops);
 
 	return 0;
 }

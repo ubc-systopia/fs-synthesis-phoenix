@@ -62,6 +62,8 @@
 #ifndef _UFS_EXT2FS_EXT2FS_EXTERN_H_
 #define _UFS_EXT2FS_EXT2FS_EXTERN_H_
 
+#include <sys/types.h>
+
 struct buf;
 struct fid;
 struct m_ext2fs;
@@ -153,15 +155,23 @@ int ext2fs_cgupdate(struct ufsmount *, int);
 void ext2fs_set_inode_guid(struct inode *);
 
 /* ext2fs_readwrite.c */
-int ext2fs_read(void *);
-int ext2fs_write(void *);
+vsize_t ext2fs_mop_get_filesize(struct vnode *);
+int ext2fs_mop_check_maxsize(struct vnode* vp, struct uio* uio);
+int ext2fs_mop_postread_update(struct vnode *, int, int);
+
+int ext2fs_mop_write_checks(struct vnode* vp, struct uio* uio, kauth_cred_t cred, int ioflag);
+void ext2fs_mop_postwrite_update(struct vnode *, struct uio *, kauth_cred_t, int);
+int ext2fs_mop_postwrite_truncate(struct vnode *, struct uio *, int, kauth_cred_t, off_t, int, int);
+int ext2fs_mop_get_blkoff(struct vnode* vp, struct uio* uio);
+vsize_t ext2fs_mop_get_bytelen(struct vnode *vp, int blkoffset, struct uio *uio);
+int ext2fs_mop_balloc_range (struct vnode* vp, struct uio* uio, vsize_t bytelen, kauth_cred_t cred);
+vsize_t ext2fs_mop_round(struct vnode* vp, struct uio* uio);
+
 int ext2fs_bufrd(struct vnode *, struct uio *, int, kauth_cred_t);
 int ext2fs_bufwr(struct vnode *, struct uio *, int, kauth_cred_t);
 
 /* ext2fs_vnops.c */
-int ext2fs_create(void *);
 int ext2fs_mknod(void *);
-int ext2fs_open(void *);
 int ext2fs_access(void *);
 int ext2fs_getattr(void *);
 int ext2fs_setattr(void *);
@@ -177,6 +187,11 @@ int ext2fs_fsync(void *);
 int ext2fs_vinit(struct mount *, int (**specops)(void *),
 		      int (**fifoops)(void *), struct vnode **);
 int ext2fs_reclaim(void *);
+
+/* ext2fs_vnops.c mop functions */
+int ext2fs_mop_create(struct vnode *, struct vnode**, struct componentname *, struct vattr *);
+int ext2fs_mop_open_opt(struct vnode *, int);
+void ext2fs_mop_close_update(struct vnode *);
 
 /* ext2fs_hash.c */
 int ext2fs_htree_hash(const char *, int, uint32_t *, int, uint32_t *,

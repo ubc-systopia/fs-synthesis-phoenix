@@ -56,16 +56,16 @@ int (**v7fs_vnodeop_p)(void *);	/* filled by getnewvnode (vnode.h) */
 const struct vnodeopv_entry_desc v7fs_vnodeop_entries[] = {
 	{ &vop_default_desc, vn_default_error },
 	{ &vop_lookup_desc, v7fs_lookup },		/* lookup */
-	{ &vop_create_desc, v7fs_create },		/* create */
+	{ &vop_create_desc, genfs_create },		/* create */
 	{ &vop_mknod_desc, v7fs_mknod },		/* mknod */
-	{ &vop_open_desc, v7fs_open },			/* open */
-	{ &vop_close_desc, v7fs_close },		/* close */
+	{ &vop_open_desc, genfs_open },			/* open */
+	{ &vop_close_desc, genfs_close },		/* close */
 	{ &vop_access_desc, v7fs_access },		/* access */
 	{ &vop_accessx_desc, genfs_accessx },		/* accessx */
 	{ &vop_getattr_desc, v7fs_getattr },		/* getattr */
 	{ &vop_setattr_desc, v7fs_setattr },		/* setattr */
-	{ &vop_read_desc, v7fs_read },			/* read */
-	{ &vop_write_desc, v7fs_write },		/* write */
+	{ &vop_read_desc, genfs_read },			/* read */
+	{ &vop_write_desc, genfs_write },		/* write */
 	{ &vop_fallocate_desc, genfs_eopnotsupp },	/* fallocate */
 	{ &vop_fdiscard_desc, genfs_eopnotsupp },	/* fdiscard */
 	{ &vop_fcntl_desc, genfs_fcntl },		/* fcntl */
@@ -226,6 +226,29 @@ const struct genfs_ops v7fs_genfsops = {
 	.gop_alloc = v7fs_gop_alloc,
 	.gop_write = genfs_gop_write,
 	.gop_putrange = genfs_gop_putrange,
+};
+
+const struct genfs_mops v7fs_genfsmops = {
+    .mop_dirread = genfs_read_common,
+    .mop_fileread = genfs_read_common,
+    .mop_get_filesize = v7fs_mop_get_filesize,
+    .mop_postread_update = v7fs_mop_postread_update,
+    .mop_check_maxsize = v7fs_mop_check_maxsize,
+    .mop_write_checks = v7fs_mop_write_checks,
+    .mop_fill_holes = genfs_fill_holes_null,
+    .mop_get_blkoff = v7fs_mop_get_blkoff,
+    .mop_get_bytelen = v7fs_mop_get_bytelen,
+    .mop_balloc = v7fs_mop_datablock_expand,
+    .mop_round = v7fs_mop_round,
+    .mop_postwrite_update = v7fs_mop_postwrite_update,
+    .mop_postwrite_truncate = genfs_null_postwrite_truncate,
+    .mop_open_opt = v7fs_mop_open_opt,
+    .mop_close_update = v7fs_mop_close_update,
+    .mop_create = v7fs_mop_create,
+    .mop_create_rootsize = genfs_create_rootsize_null,
+    .mop_get_newvnode = genfs_new_vnode_null,
+    .mop_postcreate_update = v7fs_mop_postcreate_update,
+    .mop_postcreate_unlock = genfs_postcreate_unlock_true,
 };
 
 struct vfsops v7fs_vfsops = {

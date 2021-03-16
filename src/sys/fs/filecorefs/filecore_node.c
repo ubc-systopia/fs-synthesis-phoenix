@@ -93,6 +93,8 @@ static const struct genfs_ops filecore_genfsops = {
         .gop_size = genfs_size,
 };
 
+static const struct genfs_mops filecore_genfsmops = {};
+
 /*
  * Initialize hash links for inodes and dnodes.
  */
@@ -193,7 +195,7 @@ filecore_loadvnode(struct mount *mp, struct vnode *vp,
 		vp->v_type = VREG;
 	if (ino == FILECORE_ROOTINO)
 		vp->v_vflag |= VV_ROOT;
-	genfs_node_init(vp, &filecore_genfsops);
+	genfs_node_init(vp, &filecore_genfsops, &filecore_genfsmops);
 
 	/*
 	 * XXX need generation number?

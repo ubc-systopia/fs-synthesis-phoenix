@@ -109,6 +109,7 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, znode, CTLFLAG_RD,
 krwlock_t zfsvfs_lock;
 
 static kmem_cache_t *znode_cache = NULL;
+const struct genfs_mops zfs_genfsmops = {};
 
 /*ARGSUSED*/
 static void
@@ -757,7 +758,7 @@ zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz,
 
 #ifdef __NetBSD__
 	extern const struct genfs_ops zfs_genfsops;
-	genfs_node_init(vp, &zfs_genfsops);
+	genfs_node_init(vp, &zfs_genfsops, &zfs_genfsmops);
 	uvm_vnp_setsize(vp, zp->z_size);
 #endif
 

@@ -91,6 +91,9 @@ static const struct genfs_ops ntfs_genfsops = {
 	.gop_write = genfs_compat_gop_write,
 };
 
+static const struct genfs_mops ntfs_genfsmops = {
+};
+
 static struct sysctllog *ntfs_sysctl_log;
 
 static int
@@ -801,7 +804,7 @@ ntfs_loadvnode(struct mount *mp, struct vnode *vp,
 	vp->v_op = ntfs_vnodeop_p;
 	ntfs_ntref(ip);
 	vref(ip->i_devvp);
-	genfs_node_init(vp, &ntfs_genfsops);
+	genfs_node_init(vp, &ntfs_genfsops, &ntfs_genfsmops);
 
 	if (ip->i_number == NTFS_ROOTINO)
 		vp->v_vflag |= VV_ROOT;

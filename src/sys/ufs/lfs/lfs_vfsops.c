@@ -180,6 +180,8 @@ const struct genfs_ops lfs_genfsops = {
 	.gop_putrange = genfs_gop_putrange,
 };
 
+const struct genfs_mops lfs_genfsmops = {};
+
 struct shortlong {
 	const char *sname;
 	const char *lname;
@@ -2352,7 +2354,7 @@ lfs_vinit(struct mount *mp, struct vnode **vpp)
 #if defined(LFS_QUOTA) || defined(LFS_QUOTA2)
 	ulfsquota_init(ip);
 #endif
-	genfs_node_init(vp, &lfs_genfsops);
+	genfs_node_init(vp, &lfs_genfsops, &lfs_genfsmops);
 	uvm_vnp_setsize(vp, ip->i_size);
 
 	/* Initialize hiblk from file size */

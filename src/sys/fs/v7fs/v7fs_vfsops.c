@@ -60,6 +60,7 @@ __KERNEL_RCSID(0, "$NetBSD: v7fs_vfsops.c,v 1.17 2020/01/17 20:08:09 ad Exp $");
 #include "v7fs_impl.h"
 #include "v7fs_inode.h"
 #include "v7fs_superblock.h"
+#include "v7fs_datablock.h"
 
 #ifdef V7FS_VFSOPS_DEBUG
 #define	DPRINTF(fmt, args...)	printf("%s: " fmt, __func__, ##args)
@@ -449,12 +450,13 @@ v7fs_loadvnode(struct mount *mp, struct vnode *vp,
 
 	vp->v_tag = VT_V7FS;
 	vp->v_data = v7fs_node;
+    vp->v_sflag = 1;
 	v7fs_node->vnode = vp;
 	v7fs_node->v7fsmount = v7fsmount;
 	v7fs_node->inode = inode;/*structure copy */
 	v7fs_node->lockf = NULL; /* advlock */
 
-	genfs_node_init(vp, &v7fs_genfsops);
+	genfs_node_init(vp, &v7fs_genfsops, &v7fs_genfsmops);
 	uvm_vnp_setsize(vp, v7fs_inode_filesize(&inode));
 
 	if (number == V7FS_ROOT_INODE) {
@@ -552,9 +554,8 @@ int
 v7fs_gop_alloc(struct vnode *vp, off_t off, off_t len, int flags,
     kauth_cred_t cred)
 {
-
-	DPRINTF("\n");
-	return 0;
+    DPRINTF("\n");
+    return 0;
 }
 
 int

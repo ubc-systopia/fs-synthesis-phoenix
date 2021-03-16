@@ -59,6 +59,9 @@ extern int (**efs_specop_p)(void *); 	/* for getnewvnode() */
 extern int (**efs_fifoop_p)(void *); 	/* for getnewvnode() */
 static int efs_statvfs(struct mount *, struct statvfs *);
 
+struct genfs_mops efs_genfsmops = {
+};
+
 /*
  * efs_mount and efs_mountroot common functions.
  */
@@ -441,7 +444,7 @@ efs_loadvnode(struct mount *mp, struct vnode *vp,
 	vp->v_tag = VT_EFS;
 	vp->v_vflag |= VV_LOCKSWORK;
 	vp->v_data = eip;
-	genfs_node_init(vp, &efs_genfsops);
+	genfs_node_init(vp, &efs_genfsops, &efs_genfsmops);
 	uvm_vnp_setsize(vp, eip->ei_size);
 	*new_key = &eip->ei_number;
 	return 0;

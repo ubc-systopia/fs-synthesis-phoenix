@@ -35,6 +35,7 @@
 #define _UFS_UFS_EXTERN_H_
 
 #include <sys/mutex.h>
+#include <ufs/ufs/dir.h>
 
 struct buf;
 struct componentname;

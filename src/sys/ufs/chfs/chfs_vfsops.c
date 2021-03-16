@@ -100,6 +100,8 @@ const struct genfs_ops chfs_genfsops = {
 	.gop_putrange = genfs_gop_putrange,
 };
 
+const struct genfs_mops chfs_genfsmops = {};
+
 struct pool chfs_inode_pool;
 
 /* for looking up the major for flash */
@@ -645,7 +647,7 @@ chfs_loadvnode(struct mount *mp, struct vnode *vp,
 	ip->devvp = ump->um_devvp;
 	vref(ip->devvp);
 
-	genfs_node_init(vp, &chfs_genfsops);
+	genfs_node_init(vp, &chfs_genfsops, &chfs_genfsmops);
 	uvm_vnp_setsize(vp, ip->size);
 	
 	*new_key = &ip->ino;

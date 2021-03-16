@@ -62,6 +62,7 @@ __KERNEL_RCSID(0, "$NetBSD: sysvbfs_vfsops.c,v 1.47 2020/01/17 20:08:08 ad Exp $
 MALLOC_JUSTDEFINE(M_SYSVBFS_VFS, "sysvbfs vfs", "sysvbfs vfs structures");
 
 struct pool sysvbfs_node_pool;
+struct genfs_mops sysvbfs_genfsmops = {};
 
 int sysvbfs_mountfs(struct vnode *, struct mount *, struct lwp *);
 
@@ -353,7 +354,7 @@ sysvbfs_loadvnode(struct mount *mp, struct vnode *vp,
 	bnode->inode = inode;
 	bnode->lockf = NULL; /* advlock */
 
-	genfs_node_init(vp, &sysvbfs_genfsops);
+	genfs_node_init(vp, &sysvbfs_genfsops, &sysvbfs_genfsmops);
 	uvm_vnp_setsize(vp, bfs_file_size(inode));
 
 	*new_key = &bnode->inode->number;
