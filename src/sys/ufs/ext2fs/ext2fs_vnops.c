@@ -133,9 +133,11 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
 
     pdir = VTOI(dvp);
 
+    // phoenix: i feel like that would problematic, since it relates to lookup?
     /* XXX should handle this material another way */
     ulr = &pdir->i_crap;
     UFS_CHECK_CRAPCOUNTER(pdir);
+    // end
 
     ip = VTOI(*vpp);
     

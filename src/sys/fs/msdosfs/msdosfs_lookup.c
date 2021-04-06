@@ -582,8 +582,10 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp, struct c
 	 * case.
 	 */
 	if (ddep->de_fndoffset >= ddep->de_FileSize) {
+        //phoenix: not explicitly namespace related, but could be problematic?
 		u_long needlen = ddep->de_fndoffset + sizeof(struct direntry)
 		    - ddep->de_FileSize;
+        // end
 		dirclust = de_clcount(pmp, needlen);
 		if ((error = extendfile(ddep, dirclust, 0, 0, DE_CLEAR)) != 0) {
 			(void)detrunc(ddep, ddep->de_FileSize, 0, NOCRED);
@@ -612,13 +614,16 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp, struct c
 	    B_MODIFY, &bp)) != 0) {
 		goto err_norollback;
 	}
+    // phoenix: changes to a direntry object
 	ndep = bptoep(pmp, bp, clusoffset);
 
 	DE_EXTERNALIZE(ndep, dep);
+    // end
 
 	/*
 	 * Now write the Win95 long name
 	 */
+    // phoenix: this whole thing looks like trouble :')
 	if (ddep->de_fndcnt > 0) {
 		u_int8_t chksum = winChksum(ndep->deName);
 		const u_char *un = (const u_char *)cnp->cn_nameptr;
@@ -662,6 +667,7 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp, struct c
 				break;
 		}
 	}
+    // end
 
 	if (async)
 		bdwrite(bp);
@@ -717,6 +723,7 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp, struct c
 	ndep = bptoep(pmp, bp, clusoffset);
 
 	havecnt = ddep->de_fndcnt + 1;
+    // phoenix: changes to direntry object
 	for(i = wcnt; i <= havecnt; i++) {
 		/* mark entry as deleted */
 		ndep->deName[0] = SLOT_DELETED;
@@ -748,6 +755,7 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp, struct c
 			fndoffset -= sizeof(struct direntry);
 		}
 	}
+    // end
 
 	/* ignore any further error */
 	if (async)
@@ -1021,6 +1029,7 @@ removede(struct denode *pdep, struct denode *dep)
 		    sizeof(old_key), &dep->de_key, sizeof(dep->de_key));
 #endif
 	}
+    // phoenix: changes to direntry object
 	offset += sizeof(struct direntry);
 	do {
 		offset -= sizeof(struct direntry);
@@ -1065,12 +1074,15 @@ removede(struct denode *pdep, struct denode *dep)
 	} while (!(pmp->pm_flags & MSDOSFSMNT_NOWIN95)
 	    && !(offset & pmp->pm_crbomask)
 	    && offset);
+    // end
 	return 0;
 }
 
 /*
  * Create a unique DOS name in dvp
  */
+
+// phoenix: is called in msdosfs_create_setattr, so needs to be addressed
 int
 uniqdosname(struct denode *dep, struct componentname *cnp, u_char *cp)
 {
@@ -1129,6 +1141,7 @@ uniqdosname(struct denode *dep, struct componentname *cnp, u_char *cp)
 		}
 	}
 }
+// end
 
 /*
  * Find any Win'95 long filename entry in directory dep

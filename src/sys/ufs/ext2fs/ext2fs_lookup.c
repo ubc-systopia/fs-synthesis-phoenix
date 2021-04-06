@@ -872,6 +872,8 @@ ext2fs_dirbadentry(struct vnode *dp, struct ext2fs_direct *de,
  * (ulr_offset, ulr_count) indicate how the space for the new
  * entry is to be obtained.
  */
+
+// phoenix: the next two functions need to be looked at for create() call
 int
 ext2fs_direnter(struct inode *ip, struct vnode *dvp,
     const struct ufs_lookup_results *ulr, struct componentname *cnp)
@@ -1035,6 +1037,8 @@ ext2fs_add_entry(struct vnode* dvp, struct ext2fs_direct *entry,
 	dp->i_flag |= IN_CHANGE | IN_UPDATE;
 	return error;
 }
+
+// end
 
 /*
  * Remove a directory entry after a call to namei, using
