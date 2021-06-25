@@ -75,6 +75,7 @@ __KERNEL_RCSID(0, "$NetBSD: genfs_vnops.c,v 1.210 2020/09/05 16:30:12 riastradh 
 #include <sys/kauth.h>
 #include <sys/stat.h>
 #include <sys/extattr.h>
+#include <sys/buf.h>
 
 #include <miscfs/genfs/genfs.h>
 #include <miscfs/genfs/genfs_node.h>
@@ -1532,19 +1533,53 @@ genfs_create(void *v)
     struct vattr *vap = a->a_vap;
     int unlock = 1;
     int error = 0;
+    size_t dirbuf_size = -1;
+    size_t max_namesize =  -1;
+    MOP_SET_MAX_NAMESIZE(&max_namesize);
+    MOP_SET_DIRBUF_SIZE(&dirbuf_size);
+    size_t newentrysize = -1;
+    char *dirbuf = (char *) kmem_zalloc(dirbuf_size, KM_SLEEP);
+    char *filename = (char *) kmem_zalloc(max_namesize, KM_SLEEP);
+    
     
     // At this point needed for msdosfs, since its root directory cannot grow
     if ((error = MOP_CREATE_ROOTSIZE(dvp)))
+    {
+        kmem_free(dirbuf, dirbuf_size);
         return error;
+    }
     
     /* If the FS invokes vcache_new(), it can be done on the FS-independent level;
        otherwise, vcache_get() is called inside the MOP_CREATE() call and
        requires FS-specific data
      */
     if ((error = MOP_GET_NEWVNODE(dvp, vpp, vap, cnp)))
+    {
+        kmem_free(dirbuf, dirbuf_size);
         return error;
+    }
     
-    error = MOP_CREATE(dvp, vpp, cnp, vap);
+    /*
+    if ((error = MOP_UPDATE_DISK(vpp))) {
+        kmem_free(dirbuf, dirbuf_size);
+        return error;
+    }
+    
+    
+    MOP_SET_DIRENT(*vpp, dirbuf, cnp, &newentrysize)
+    
+    
+    if (MOP_HTREE_HAS_IDX(dvp)) {
+        error = MOP_HTREE_ADD_ENTRY(dvp, dirbuf, cnp, newentrysize);
+        kmem_free(dirbuf, dirbuf_size);
+        return error;
+    }
+    
+    if (MOP_BLOCK_HAS_SPACE(dvp))
+        error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
+    else */
+        error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize);
+    
     MOP_POSTCREATE_UPDATE(vpp);
     
     cache_enter(dvp, *vpp, cnp->cn_nameptr, cnp->cn_namelen, cnp->cn_flags);
@@ -1554,6 +1589,8 @@ genfs_create(void *v)
     if (error == 0 && (unlock = MOP_POSTCREATE_UNLOCK())) {
         VOP_UNLOCK(*vpp);
     }
+    
+    kmem_free(dirbuf, dirbuf_size);
     
     return error;
 }
@@ -1892,3 +1929,4 @@ int genfs_postcreate_unlock_false(void)
 {
     return 0;
 }
+

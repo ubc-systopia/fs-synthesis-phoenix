@@ -246,9 +246,16 @@ const struct genfs_mops v7fs_genfsmops = {
     .mop_close_update = v7fs_mop_close_update,
     .mop_create = v7fs_mop_create,
     .mop_create_rootsize = genfs_create_rootsize_null,
-    .mop_get_newvnode = genfs_new_vnode_null,
+    .mop_get_newvnode = genfs_new_vnode,
     .mop_postcreate_update = v7fs_mop_postcreate_update,
     .mop_postcreate_unlock = genfs_postcreate_unlock_true,
+    .mop_block_has_space = 0,
+    .mop_add_to_new_block = 0,
+    .mop_set_dirbuf_size = v7fs_mop_set_dirbuf_size,
+    .mop_update_disk = 0,
+    .mop_set_dirent = v7fs_mop_set_dirent,
+    .mop_htree_has_idx = 0,
+    .mop_htree_add_entry = 0,
 };
 
 struct vfsops v7fs_vfsops = {
@@ -263,6 +270,7 @@ struct vfsops v7fs_vfsops = {
 	.vfs_sync = v7fs_sync,
 	.vfs_vget = v7fs_vget,
 	.vfs_loadvnode = v7fs_loadvnode,
+    .vfs_newvnode = v7fs_newvnode,
 	.vfs_fhtovp = v7fs_fhtovp,
 	.vfs_vptofh = v7fs_vptofh,
 	.vfs_init = v7fs_init,

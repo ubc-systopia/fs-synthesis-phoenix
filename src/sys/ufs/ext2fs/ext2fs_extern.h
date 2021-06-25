@@ -188,8 +188,24 @@ int ext2fs_vinit(struct mount *, int (**specops)(void *),
 		      int (**fifoops)(void *), struct vnode **);
 int ext2fs_reclaim(void *);
 
+int ext2fs_create (void *);
+
 /* ext2fs_vnops.c mop functions */
-int ext2fs_mop_create(struct vnode *, struct vnode**, struct componentname *, struct vattr *);
+int ext2fs_mop_update_disk(struct vnode **);
+void ext2fs_mop_get_inumber(struct vnode *, ino_t *);
+void ext2fs_mop_set_dirent(struct vnode *, char *, struct componentname *, size_t *);
+int ext2fs_mop_htree_has_idx(struct vnode *);
+int ext2fs_mop_htree_add_entry(struct vnode *, char *, struct componentname *, size_t);
+int ext2fs_mop_add_to_new_block(struct vnode *, char *, struct componentname *, size_t);
+void ext2fs_mop_flag_update(struct vnode *);
+int ext2fs_mop_set_size(struct vnode *, int);
+void ext2fs_mop_set_dirbuf_size(size_t *);
+void ext2fs_mop_set_dirblksize(struct vnode *, int *);
+int ext2fs_mop_block_has_space(struct vnode *);
+uint64_t ext2fs_mop_node_size(struct vnode *);
+int ext2fs_mop_create_on_error_routine(struct vnode *, int);
+
+int ext2fs_mop_create(struct vnode *, struct vnode**, struct componentname *, struct vattr *, char *, size_t);
 int ext2fs_mop_open_opt(struct vnode *, int);
 void ext2fs_mop_close_update(struct vnode *);
 

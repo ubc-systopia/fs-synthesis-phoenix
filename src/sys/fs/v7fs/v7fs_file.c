@@ -142,7 +142,6 @@ v7fs_file_allocate(struct v7fs_self *fs, struct v7fs_inode *parent_dir,
 	struct v7fs_dirent *dir;
 	int error;
 
-    // phoenix: dealing with file naming/direntry
 	/* Truncate filename. */
 	v7fs_dirent_filename(filename, srcname);
 	DPRINTF("%s(%s)\n", filename, srcname);
@@ -152,8 +151,7 @@ v7fs_file_allocate(struct v7fs_self *fs, struct v7fs_inode *parent_dir,
 		DPRINTF("%s exists\n", filename);
 		return EEXIST;
 	}
-    // end
-    
+
 	/* Get new inode. */
 	if ((error = v7fs_inode_allocate(fs, ino)))
 		return error;
@@ -205,13 +203,11 @@ v7fs_file_allocate(struct v7fs_self *fs, struct v7fs_inode *parent_dir,
 			v7fs_inode_deallocate(fs, *ino);
 			return EIO;
 		}
-        // phoenix: dealing with file naming/direntry
 		dir = (struct v7fs_dirent *)buf;
 		strcpy(dir[0].name, ".");
 		dir[0].inode_number = V7FS_VAL16(fs, *ino);
 		strcpy(dir[1].name, "..");
 		dir[1].inode_number = V7FS_VAL16(fs, parent_dir->inode_number);
-        // end
 		if (!fs->io.write(fs->io.cookie, buf, blk)) {
 			scratch_free(fs, buf);
 			return EIO;
@@ -222,14 +218,12 @@ v7fs_file_allocate(struct v7fs_self *fs, struct v7fs_inode *parent_dir,
 
 	v7fs_inode_writeback(fs, &inode);
 
-    // phoenix: dealing with file naming/direntry
 	/* Link this inode to parent directory. */
 	if ((error = v7fs_directory_add_entry(fs, parent_dir, *ino, filename)))
 	{
 		DPRINTF("can't add dirent.\n");
 		return error;
 	}
-    // end
 
 	return 0;
 }
@@ -242,19 +236,16 @@ v7fs_file_deallocate(struct v7fs_self *fs, struct v7fs_inode *parent_dir,
 	struct v7fs_inode inode;
 	int error;
 
-    // phoenix: dealing with file naming/direntry
 	DPRINTF("%s\n", name);
 	if ((error = v7fs_file_lookup_by_name(fs, parent_dir, name, &ino))) {
 		DPRINTF("no such a file: %s\n", name);
 		return error;
 	}
-    // end
 	DPRINTF("%s->#%d\n", name, ino);
 	if ((error = v7fs_inode_load(fs, &inode, ino)))
 		return error;
 
 	if (v7fs_inode_isdir(&inode)) {
-        // // phoenix: dealing with file naming/direntry
 		char filename[V7FS_NAME_MAX + 1];
 		v7fs_dirent_filename(filename, name);
 		/* Check parent */
@@ -268,7 +259,6 @@ v7fs_file_deallocate(struct v7fs_self *fs, struct v7fs_inode *parent_dir,
 			DPRINTF("directory not empty.\n");
 			return ENOTEMPTY;/* t_vnops dir_noempty, rename_dir(6)*/
 		}
-        // end
 		error = v7fs_datablock_size_change(fs, 0, &inode);
 		if (error)
 			return error;
@@ -280,19 +270,15 @@ v7fs_file_deallocate(struct v7fs_self *fs, struct v7fs_inode *parent_dir,
 	}
 
 
-    // phoenix: dealing with file naming/direntry
 	if ((error = v7fs_directory_remove_entry(fs, parent_dir, name)))
 		return error;
 	DPRINTF("remove dirent\n");
-    // end
 
 	v7fs_inode_writeback(fs, &inode);
 
 	return 0;
 }
 
-
-// phoenix: dealing with file naming/direntry
 int
 v7fs_directory_add_entry(struct v7fs_self *fs, struct v7fs_inode *parent_dir,
     v7fs_ino_t ino, const char *srcname)
@@ -430,5 +416,3 @@ remove_subr(struct v7fs_self *fs, void *ctx, v7fs_daddr_t blk, size_t sz)
 
 	return ret;
 }
-
-// end

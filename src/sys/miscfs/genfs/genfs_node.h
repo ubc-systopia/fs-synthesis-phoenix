@@ -54,9 +54,21 @@ struct genfs_ops {
 };
 
 struct genfs_mops {
+    void (*mop_set_dirbuf_size) (size_t *);
+    int (*mop_update_disk) (struct vnode **);
+    void (*mop_get_inumber) (struct vnode *, ino_t *);
+    void (*mop_set_dirent) (struct vnode *, char *, size_t *, const char *, size_t);
+    int (*mop_htree_has_idx) (struct vnode *);
+    int (*mop_htree_add_entry) (struct vnode *, char *, struct componentname *, size_t);
+    int (*mop_block_has_space) (struct vnode *);
+    int (*mop_add_to_new_block) (struct vnode *, char *, struct componentname *, size_t);
+    int (*mop_set_size) (struct vnode *, int);
+    void (*mop_flag_update) (struct vnode *);
+    uint64_t (*mop_node_size) (struct vnode *);
+    int (*mop_direnter) (struct vnode *, struct vnode **, struct componentname *, char *, size_t *);
     int (*mop_create_rootsize) (struct vnode *);
     int (*mop_get_newvnode) (struct vnode *, struct vnode **, struct vattr *, struct componentname *);
-    int (*mop_create) (struct vnode *, struct vnode **, struct componentname *, struct vattr *);
+    int (*mop_create) (struct vnode *, struct vnode **, struct componentname *, struct vattr *, char *, size_t);
     void (*mop_postcreate_update) (struct vnode **);
     int (*mop_postcreate_unlock) (void);
     
@@ -123,17 +135,49 @@ struct genfs_mops {
 #define MOP_CLOSE_UPDATE(vp) \
     (*VTOG(vp)->g_mop->mop_close_update)((vp))
 
-#define MOP_CREATE(dvp, vpp, cnp, vap) \
-    (*VTOG(dvp)->g_mop->mop_create)((dvp), (vpp), (cnp), (vap))
+
+#define MOP_SET_DIRBUF_SIZE(dirbuf_size) \
+    (*VTOG(dvp)->g_mop->mop_set_dirbuf_size)((dirbuf_size))
 #define MOP_CREATE_ROOTSIZE(dvp) \
     (*VTOG(dvp)->g_mop->mop_create_rootsize)((dvp))
 #define MOP_GET_NEWVNODE(dvp, vpp, vap, cnp) \
     (*VTOG(dvp)->g_mop->mop_get_newvnode)((dvp), (vpp), (vap), (cnp))
+#define MOP_UPDATE_DISK(vp) \
+    (*VTOG(*vp)->g_mop->mop_update_disk)((vp))
+#define MOP_GET_INUMBER(vp, ino) \
+    (*VTOG(vp)->g_mop->mop_get_inumber)((vp), (ino))
+#define MOP_SET_DIRENT(vp, buf, newentrysize, name, namelen) \
+    (*VTOG(vp)->g_mop->mop_set_dirent)((vp), (buf), (cnp), (newentrysize), (name), namelen)
+#define MOP_HTREE_HAS_IDX(dvp) \
+    (*VTOG(dvp)->g_mop->mop_htree_has_idx)((dvp))
+#define MOP_HTREE_ADD_ENTRY(dvp, dirbuf, cnp, entry_size) \
+    (*VTOG(dvp)->g_mop->mop_htree_add_entry)((dvp), (dirbuf), (cnp), (entry_size))
+#define MOP_BLOCK_HAS_SPACE(dvp) \
+    (*VTOG(dvp)->g_mop->mop_block_has_space)((dvp))
+#define MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, entry_size) \
+    (*VTOG(dvp)->g_mop->mop_add_to_new_block)((dvp), (dirbuf), (cnp), (entry_size))
+
+#define MOP_SET_SIZE(dvp, dirblksiz) \
+    (*VTOG(dvp)->g_mop->mop_set_size)((dvp), (dirblksiz))
+#define MOP_FLAG_UPDATE(dvp) \
+    (*VTOG(dvp)->g_mop->mop_flag_update)((dvp))
+#define MOP_NODE_SIZE(dvp) \
+    (*VTOG(dvp)->g_mop->mop_node_size)((dvp))
+#define MOP_DIRENTER(dvp, vpp, cnp, dirbuf, entry_size) \
+    (*VTOG(dvp)->g_mop->mop_direnter)((dvp), (vpp), (cnp), (dirbuf), (entry_size))
+
+
+
+#define MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize) \
+    (*VTOG(dvp)->g_mop->mop_create)((dvp), (vpp), (cnp), (vap), (dirbuf), (newentrysize))
 #define MOP_POSTCREATE_UPDATE(vpp) \
     (*VTOG(*vpp)->g_mop->mop_postcreate_update)((vpp))
 
 #define MOP_POSTCREATE_UNLOCK() \
     (*VTOG(*vpp)->g_mop->mop_postcreate_unlock)()
+
+#define MOP_GET_NAME_MAX() \
+    (*VTOG(dvp)->g_mop->mop_get_namemax)()
 
 
 

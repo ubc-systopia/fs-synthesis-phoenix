@@ -82,6 +82,7 @@ __KERNEL_RCSID(0, "$NetBSD: ext2fs_vnops.c,v 1.132 2020/05/16 18:31:53 christos 
 #include <sys/pool.h>
 #include <sys/signalvar.h>
 #include <sys/kauth.h>
+#include <sys/dirent.h>
 
 #include <miscfs/fifofs/fifo.h>
 #include <miscfs/genfs/genfs.h>
@@ -121,48 +122,210 @@ union _qcvt {
 	(q) = tmp.qcvt; \
 }
 
+int
+ext2fs_create(void *v)
+{
+    struct vop_create_v3_args /* {
+        struct vnode *a_dvp;
+        struct vnode **a_vpp;
+        struct componentname *a_cnp;
+        struct vattr *a_vap;
+    } */ *ap = v;
+    int    error;
+
+    error = ext2fs_makeinode(ap->a_vap, ap->a_dvp, ap->a_vpp, ap->a_cnp, 1);
+
+    if (error)
+        return error;
+    VN_KNOTE(ap->a_dvp, NOTE_WRITE);
+    VOP_UNLOCK(*ap->a_vpp);
+    return 0;
+}
+
 /* MOP functions introduced */
 
 // MOP and helper function(s) related to create()
 
+int ext2fs_mop_update_disk(struct vnode **vpp)
+{
+    int error = 0;
+    struct inode *ip = VTOI(*vpp);
+    
+    if ((error = ext2fs_update(*vpp, NULL, NULL, UPDATE_WAIT)) != 0)
+    {
+        ip->i_e2fs_nlink = 0;
+        ip->i_flag |= IN_CHANGE;
+        vput(*vpp);
+        return error;
+    }
+    return error;
+}
+
+void ext2fs_mop_get_inumber(struct vnode *vp, ino_t *ino)
+{
+    struct inode *ip = VTOI(vp);
+    *ino = h2fs32(ip->i_number);
+}
+
+void ext2fs_mop_set_dirent(struct vnode *vp, char *dirbuf, struct componentname *cnp, size_t *newentrysize)
+{
+    struct ext2fs_direct newdir;
+    ino_t ino;
+    MOP_GET_INUMBER(vp, &ino);
+    struct ufsmount *ump = VFSTOUFS(vp->v_mount); // reachable through dvp
+    int dirblksiz = ump->um_dirblksiz; // reachable throug dvp
+
+    // Dealing with direntry
+    newdir.e2d_ino = ino;
+    newdir.e2d_namlen = cnp->cn_namelen;
+    newdir.e2d_reclen = h2fs16(dirblksiz);
+    
+    /*
+    if (EXT2F_HAS_INCOMPAT_FEATURE(ip->i_e2fs, EXT2F_INCOMPAT_FTYPE)) {
+        newdir.e2d_type = inot2ext2dt(IFTODT(ip->i_e2fs_mode));
+    } else {
+        newdir.e2d_type = 0;
+    } */
+    newdir.e2d_type = 0;
+    memcpy(newdir.e2d_name, cnp->cn_nameptr, (unsigned)cnp->cn_namelen + 1);
+    *newentrysize = EXT2FS_DIRSIZ(cnp->cn_namelen);
+
+    memcpy(dirbuf, &newdir, sizeof(struct ext2fs_direct));
+}
+
+int ext2fs_mop_htree_has_idx(struct vnode *dvp)
+{
+    struct inode *ip = VTOI(dvp);
+    
+    return EXT2F_HAS_COMPAT_FEATURE(ip->i_e2fs, EXT2F_COMPAT_DIRHASHINDEX)
+        && (ip->i_din.e2fs_din->e2di_flags & EXT2_INDEX);
+}
+
+int ext2fs_mop_htree_add_entry(struct vnode *dvp, char *dirbuf, struct componentname *cnp, size_t entry_size)
+{
+    int error = 0;
+    struct inode *pdir = VTOI(dvp);
+    struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
+    
+    error = ext2fs_htree_add_entry(dvp, newdir, cnp, entry_size);
+    if (error)
+    {
+        pdir->i_e2fs_flags &= ~EXT2_INDEX;
+        pdir->i_flag |= IN_CHANGE | IN_UPDATE;
+    }
+    return error;
+}
+
+int ext2fs_mop_set_size(struct vnode *vp, int dirblksiz)
+{
+    struct inode *ip = VTOI(vp);
+    return ext2fs_setsize(ip, roundup(ext2fs_size(ip), dirblksiz));
+}
+
+int ext2fs_mop_block_has_space(struct vnode *vp)
+{
+    struct ufs_lookup_results *ulr = &vp->v_crap;
+    UFS_CHECK_CRAPCOUNTER(vp);
+    
+    return (ulr->ulr_count == 0);
+}
+uint64_t ext2fs_mop_node_size(struct vnode *vp)
+{
+    struct inode *ip = VTOI(vp);
+    return ext2fs_size(ip);
+}
+
+void ext2fs_mop_flag_update(struct vnode *vp)
+{
+    struct inode *ip = VTOI(vp);
+    ip->i_flag |= IN_CHANGE;
+    
+}
+
+void ext2fs_mop_set_dirblksize(struct vnode *vp, int* dirblksize)
+{
+    struct ufsmount *ump = VFSTOUFS(vp->v_mount);
+    *dirblksize = ump->um_dirblksiz;
+}
+
+int ext2fs_mop_add_to_new_block(struct vnode *dvp, char *dirbuf, struct componentname *cnp, size_t entry_size)
+{
+    int error = 0;
+    //struct ufsmount *ump = VFSTOUFS(dvp->v_mount); // reachable through dvp
+    int dirblksiz = -1; // reachable throug dvp
+    ext2fs_mop_set_dirblksize(dvp, &dirblksiz);
+    struct iovec aiov; // FS-independent
+    struct uio auio; // FS-independent
+    
+    struct ufs_lookup_results *ulr = &dvp->v_crap;
+    UFS_CHECK_CRAPCOUNTER(dvp);
+    
+    if (ulr->ulr_offset & (dirblksiz - 1))
+        panic("ext2fs_direnter: newblk");
+    auio.uio_offset = ulr->ulr_offset;
+    auio.uio_resid = entry_size; // will have to be passed from fs-ind after being set
+    aiov.iov_len = entry_size; // same thing
+    aiov.iov_base = (void *) dirbuf;
+    auio.uio_iov = &aiov; // fs-ind
+    auio.uio_iovcnt = 1; // fs-ind
+    auio.uio_rw = UIO_WRITE; // fs-ind
+    UIO_SETUP_SYSSPACE(&auio); // fs-ind
+    error = ext2fs_bufwr(dvp, &auio, IO_SYNC, cnp->cn_cred);
+    
+    if (dirblksiz > dvp->v_mount->mnt_stat.f_bsize)
+        /* XXX should grow with balloc() */
+        panic("direnter: frag size");
+    else if (!error) {
+        error = ext2fs_mop_set_size(dvp, dirblksiz);
+        //error = MOP_SET_SIZE(dvp, dirblksiz);
+        if (error)
+            return error;
+        ext2fs_mop_flag_update(dvp);
+        uvm_vnp_setsize(dvp, ext2fs_mop_node_size(dvp));
+    }
+
+    return error;
+}
+
+void ext2fs_mop_set_dirbuf_size(size_t *dirbuf_size)
+{
+    *dirbuf_size = sizeof(struct ext2fs_direct);
+}
+
+int ext2fs_mop_create_on_error_routine(struct vnode *vp, int oerror)
+{
+    struct inode *ip = VTOI(vp);
+    ip->i_e2fs_nlink = 0;
+    ip->i_flag |= IN_CHANGE;
+    vput(vp);
+    
+    return oerror;
+}
+
 int
-ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap) {
-    struct inode *ip, *pdir;
+ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize) {
     int error = 0;
     struct ufs_lookup_results *ulr;
 
-    pdir = VTOI(dvp);
-
-    // phoenix: i feel like that would problematic, since it relates to lookup?
     /* XXX should handle this material another way */
-    ulr = &pdir->i_crap;
-    UFS_CHECK_CRAPCOUNTER(pdir);
-    // end
+    ulr = &dvp->v_crap;
+    UFS_CHECK_CRAPCOUNTER(dvp);
+    
+    struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
 
-    ip = VTOI(*vpp);
+    error = ext2fs_add_entry(dvp, newdir, ulr, newentrysize);
     
-    /*
-     * Make sure inode goes to disk before directory entry.
-     */
-    if ((error = ext2fs_update(*vpp, NULL, NULL, UPDATE_WAIT)) != 0)
-        goto bad;
-    error = ext2fs_direnter(ip, dvp, ulr, cnp);
+    if (!error && ulr->ulr_endoff && ulr->ulr_endoff < ext2fs_mop_node_size(dvp))
+        error = ext2fs_truncate(dvp, (off_t)ulr->ulr_endoff, IO_SYNC,
+            cnp->cn_cred);
+
     if (error != 0)
-        goto bad;
-    
-    return error;
-    
-bad:
-    /*
-     * Write error occurred trying to update the inode
-     * or the directory so must deallocate the inode.
-     */
-    ip->i_e2fs_nlink = 0;
-    ip->i_flag |= IN_CHANGE;
-    vput(*vpp);
+        return ext2fs_mop_create_on_error_routine(*vpp, error);
+        
     return error;
     
 }
+
 
 // MOP and helper function(s) related to open()
 int
@@ -561,8 +724,8 @@ ext2fs_remove(void *v)
 	int error;
 
 	/* XXX should handle this material another way */
-	ulr = &VTOI(dvp)->i_crap;
-	UFS_CHECK_CRAPCOUNTER(VTOI(dvp));
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	ip = VTOI(vp);
 	if (vp->v_type == VDIR ||
@@ -609,8 +772,8 @@ ext2fs_link(void *v)
 	KASSERT(dvp->v_mount == vp->v_mount);
 
 	/* XXX should handle this material another way */
-	ulr = &VTOI(dvp)->i_crap;
-	UFS_CHECK_CRAPCOUNTER(VTOI(dvp));
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	error = vn_lock(vp, LK_EXCLUSIVE);
 	if (error) {
@@ -666,8 +829,8 @@ ext2fs_mkdir(void *v)
 	struct ufs_lookup_results *ulr;
 
 	/* XXX should handle this material another way */
-	ulr = &VTOI(dvp)->i_crap;
-	UFS_CHECK_CRAPCOUNTER(VTOI(dvp));
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	KASSERT(ap->a_vap->va_type == VDIR);
 
@@ -796,8 +959,8 @@ ext2fs_rmdir(void *v)
 	dp = VTOI(dvp);
 
 	/* XXX should handle this material another way */
-	ulr = &dp->i_crap;
-	UFS_CHECK_CRAPCOUNTER(dp);
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	/*
 	 * No rmdir "." please.
@@ -1028,16 +1191,16 @@ static int
 ext2fs_makeinode(struct vattr *vap, struct vnode *dvp, struct vnode **vpp,
         struct componentname *cnp, int do_direnter)
 {
-    struct inode *ip, *pdir;
+    struct inode *ip;
     struct vnode *tvp;
     int error;
     struct ufs_lookup_results *ulr;
 
-    pdir = VTOI(dvp);
+    //pdir = VTOI(dvp);
 
     /* XXX should handle this material another way */
-    ulr = &pdir->i_crap;
-    UFS_CHECK_CRAPCOUNTER(pdir);
+    ulr = &dvp->v_crap;
+    UFS_CHECK_CRAPCOUNTER(dvp);
 
     *vpp = NULL;
 
@@ -1114,7 +1277,7 @@ int (**ext2fs_vnodeop_p)(void *);
 const struct vnodeopv_entry_desc ext2fs_vnodeop_entries[] = {
 	{ &vop_default_desc, vn_default_error },
 	{ &vop_lookup_desc, ext2fs_lookup },		/* lookup */
-	{ &vop_create_desc, genfs_create },		/* create */
+	{ &vop_create_desc, ext2fs_create },		/* create */
 	{ &vop_mknod_desc, ext2fs_mknod },		/* mknod */
 	{ &vop_open_desc, genfs_open },		/* open */
 	{ &vop_close_desc, genfs_close },			/* close */

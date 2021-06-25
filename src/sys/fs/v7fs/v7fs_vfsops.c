@@ -423,6 +423,108 @@ v7fs_mode_to_vtype (v7fs_mode_t mode)
 }
 
 int
+v7fs_newvnode(struct mount *mp, struct vnode *dvp, struct vnode *vp,
+              struct vattr *vap, kauth_cred_t cred, void *extra, size_t *key_len,
+              const void **new_key)
+{
+    struct v7fs_mount *v7fsmount = mp->mnt_data;
+    struct v7fs_self *fs = v7fsmount->core;;
+    struct v7fs_node *v7fs_node;
+    struct v7fs_inode inode;
+    v7fs_ino_t ino;
+    int error = 0;
+    
+    
+    size_t dirsize = -1;
+    MOP_SET_DIRBUF_SIZE(&dirsize);
+    
+    KASSERT(dvp->v_mount == mp);
+    KASSERT(vap->va_type != VNON);
+    
+    /* Get new inode. */
+    if ((error = v7fs_inode_allocate(fs, &ino)))
+        return error;
+
+
+    /* Set initial attribute. */
+    memset(&inode, 0, sizeof(inode));
+    inode.inode_number = ino;
+    inode.mode = vap->va_mode | vtype_to_v7fs_mode (vap->va_type);
+    inode.uid = kauth_cred_geteuid(cr);
+    inode.gid = kauth_cred_getegid(cr);
+    
+    switch (inode.mode & V7FS_IFMT)    {
+        default:
+            DPRINTF("Can't allocate %o type.\n", inode.mode);
+            v7fs_inode_deallocate(fs, ino);
+            return EINVAL;
+        case V7FS_IFCHR:
+            /* FALLTHROUGH */
+        case V7FS_IFBLK:
+            inode.nlink = 1;
+            inode.device = 0;
+            inode.addr[0] = inode->device;
+            break;
+        case V7FSBSD_IFFIFO:
+            /* FALLTHROUGH */
+        case V7FSBSD_IFSOCK:
+            /* FALLTHROUGH */
+        case V7FSBSD_IFLNK:
+            /* FALLTHROUGH */
+        case V7FS_IFREG:
+            inode.nlink = 1;
+            break;
+        case V7FS_IFDIR:
+            inode.nlink = 2;    /* . + .. */
+            if ((error = v7fs_datablock_expand(fs, &inode, dirsize * 2))) {
+                v7fs_inode_deallocate(fs, ino);
+                return error;
+            }
+            break;
+    }
+
+   // v7fs_inode_writeback(fs, inode);
+
+    
+    v7fs_node = pool_get(&v7fs_node_pool, PR_WAITOK);
+    memset(v7fs_node, 0, sizeof(*v7fs_node));
+
+    vp->v_tag = VT_V7FS;
+    vp->v_data = v7fs_node;
+    vp->v_sflag = 1;
+    v7fs_node->vnode = vp;
+    v7fs_node->v7fsmount = v7fsmount;
+    v7fs_node->inode = inode;/*structure copy */
+    v7fs_node->lockf = NULL; /* advlock */
+
+    genfs_node_init(vp, &v7fs_genfsops, &v7fs_genfsmops);
+    uvm_vnp_setsize(vp, v7fs_inode_filesize(&inode));
+
+    if (ino == V7FS_ROOT_INODE) {
+        vp->v_type = VDIR;
+        vp->v_vflag |= VV_ROOT;
+        vp->v_op = v7fs_vnodeop_p;
+    } else {
+        vp->v_type = v7fs_mode_to_vtype(inode.mode);
+
+        if (vp->v_type == VBLK || vp->v_type == VCHR) {
+            dev_t rdev = inode.device;
+            vp->v_op = v7fs_specop_p;
+            spec_node_init(vp, rdev);
+        } else if (vp->v_type == VFIFO) {
+            vp->v_op = v7fs_fifoop_p;
+        } else {
+            vp->v_op = v7fs_vnodeop_p;
+        }
+    }
+
+    *new_key = &v7fs_node->inode.inode_number;
+    
+    
+    return 0;
+}
+
+int
 v7fs_loadvnode(struct mount *mp, struct vnode *vp,
     const void *key, size_t key_len, const void **new_key)
 {

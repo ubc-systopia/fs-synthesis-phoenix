@@ -86,6 +86,7 @@ __KERNEL_RCSID(0, "$NetBSD: ext2fs_vfsops.c,v 1.219 2020/05/16 18:31:53 christos
 #include <sys/conf.h>
 #include <sys/kauth.h>
 #include <sys/module.h>
+#include <sys/dirent.h>
 
 #include <miscfs/genfs/genfs.h>
 #include <miscfs/specfs/specdev.h>
@@ -168,6 +169,16 @@ static const struct genfs_mops ext2fs_genfsmops = {
     .mop_round = ext2fs_mop_round,
     .mop_open_opt = ext2fs_mop_open_opt,
     .mop_close_update = ext2fs_mop_close_update,
+    .mop_block_has_space = ext2fs_mop_block_has_space,
+    .mop_add_to_new_block = ext2fs_mop_add_to_new_block,
+    //.mop_flag_update = ext2fs_mop_flag_update,
+    //.mop_node_size = ext2fs_mop_node_size,
+    .mop_set_dirbuf_size = ext2fs_mop_set_dirbuf_size,
+    .mop_update_disk = ext2fs_mop_update_disk,
+    .mop_get_inumber = ext2fs_mop_get_inumber,
+    .mop_set_dirent = ext2fs_mop_set_dirent,
+    .mop_htree_has_idx = ext2fs_mop_htree_has_idx,
+    .mop_htree_add_entry = ext2fs_mop_htree_add_entry,
     .mop_create_rootsize = genfs_create_rootsize_null,
     .mop_create = ext2fs_mop_create,
     .mop_get_newvnode = genfs_new_vnode,

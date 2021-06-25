@@ -49,7 +49,6 @@ __KERNEL_RCSID(0, "$NetBSD: v7fs_vnops.c,v 1.31 2020/06/27 17:29:18 christos Exp
 #include <sys/buf.h>
 #include <sys/stat.h>	/*APPEND */
 #include <miscfs/genfs/genfs.h>
-//#include <ufs/ufs/ufs_extern.h>
 
 #include <fs/v7fs/v7fs.h>
 #include <fs/v7fs/v7fs_impl.h>
@@ -93,6 +92,17 @@ v7fs_mode_to_d_type(v7fs_mode_t mode)
 
 // MOP and helper function(s) related to create()
 
+void v7fs_mop_set_dirbuf_size(size_t *dirbuf)
+{
+    *dirbuf = sizeof(struct v7fs_dirent);
+}
+
+void v7fs_mop_set_dirent(struct vnode *vp, char *dirbuf, struct componentname *cnp, size_t *newentrysize)
+{
+    return;
+}
+
+
 int v7fs_create_setattr(struct v7fs_fileattr *attr, struct componentname* cnp, struct vattr* vap)
 {
     int error = 0;
@@ -106,36 +116,81 @@ int v7fs_create_setattr(struct v7fs_fileattr *attr, struct componentname* cnp, s
     return error;
 }
 
-int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap)
+void v7fs_mop_filename_truncate(char* filename, struct componentname *cnp)
+{
+
+    strncpy(filename, cnp->cn_nameptr, V7FS_NAME_MAX);
+    filename[V7FS_NAME_MAX] = '\0';
+    
+}
+
+
+int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize)
 {
     int error = 0;
     struct v7fs_node *parent_node = dvp->v_data;
     struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
     struct v7fs_self *fs = v7fsmount->core;
     struct mount *mp = v7fsmount->mountp;
-    struct v7fs_fileattr attr;
     v7fs_ino_t ino;
+    char filename[V7FS_NAME_MAX + 1];
+    struct v7fs_inode *parent_dir = &parent_node->inode;
+    kauth_cred_t cr = cnp->cn_cred;
     
-    memset(&attr, 0, sizeof(attr));
+    size_t dirsize = -1;
+    MOP_SET_DIRBUF_SIZE(&dirsize);
     
-    if ((error = v7fs_create_setattr(&attr, cnp, vap)) != 0) {
-        return error;
-    }
+    struct v7fs_inode inode;
+    struct v7fs_dirent *dir;
     
-    /* Allocate disk entry. and register its entry to parent directory. */
-    if ((error = v7fs_file_allocate(fs, &parent_node->inode,
-            cnp->cn_nameptr, &attr, &ino))) {
-        DPRINTF("v7fs_file_allocate failed.\n");
-        return error;
-    }
-    /* Sync dirent size change. */
-    uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));
+    v7fs_mop_filename_truncate(filename, cnp);
 
-    /* Get myself vnode. */
+    // Check filename.
+    if (v7fs_file_lookup_by_name(fs, parent_dir, filename, &ino) == 0) {
+        DPRINTF("%s exists\n", filename);
+        return EEXIST;
+    }
+    
+    /* Get new inode.
+    if ((error = v7fs_inode_allocate(fs, &ino)))
+        return error; */
+    
+    v7fs_daddr_t blk = inode.addr[0];
+    void *buf;
+    if (!(buf = scratch_read(fs, blk))) {
+        v7fs_inode_deallocate(fs, ino);
+        return EIO;
+    }
+    
+    MOP_SET_DIRBUF()
+    dir = (struct v7fs_dirent *)buf;
+    strcpy(dir[0].name, ".");
+    dir[0].inode_number = V7FS_VAL16(fs, ino);
+    strcpy(dir[1].name, "..");
+    dir[1].inode_number = V7FS_VAL16(fs, parent_dir->inode_number);
+    if (!fs->io.write(fs->io.cookie, buf, blk)) {
+        scratch_free(fs, buf);
+        return EIO;
+    }
+    scratch_free(fs, buf);
+    
+    
+    /* Link this inode to parent directory. */
+    if ((error = v7fs_directory_add_entry(fs, parent_dir, ino, filename)))
+    {
+        DPRINTF("can't add dirent.\n");
+        return error;
+    }
+    
+    // Get myself vnode.
+    /*
     if ((error = v7fs_vget(mp, ino, LK_EXCLUSIVE, vpp)) != 0) {
         DPRINTF("v7fs_vget failed.\n");
         return error;
-    }
+    } */
+    
+    /* Sync dirent size change. */
+    uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));
 
     return error;
     

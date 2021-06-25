@@ -106,8 +106,11 @@ extern const struct genfs_ops v7fs_genfsops;
 /* MOP and helper function(s) */
 // Create
 int v7fs_create_setattr(struct v7fs_fileattr *attr, struct componentname* cnp, struct vattr* vap);
-int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap);
+int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize);
 void v7fs_mop_postcreate_update(struct vnode** vpp);
+void v7fs_mop_set_dirbuf_size(size_t *);
+void v7fs_mop_set_dirent(struct vnode *, char *, struct componentname *, size_t *);
+void v7fs_mop_filename_truncate(char* filename, struct componentname *cnp);
 
 // Open/close
 int v7fs_mop_open_opt(struct vnode *, int);
