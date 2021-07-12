@@ -61,6 +61,7 @@ __KERNEL_RCSID(0, "$NetBSD: v7fs_vfsops.c,v 1.17 2020/01/17 20:08:09 ad Exp $");
 #include "v7fs_inode.h"
 #include "v7fs_superblock.h"
 #include "v7fs_datablock.h"
+#include "v7fs_endian.h"
 
 #ifdef V7FS_VFSOPS_DEBUG
 #define	DPRINTF(fmt, args...)	printf("%s: " fmt, __func__, ##args)
@@ -75,6 +76,17 @@ static int v7fs_openfs(struct vnode *, struct mount *, struct lwp *);
 static void v7fs_closefs(struct vnode *, struct mount *);
 static int is_v7fs_partition(struct vnode *);
 static enum vtype v7fs_mode_to_vtype(v7fs_mode_t mode);
+static v7fs_mode_t vtype_to_v7fs_mode(enum vtype);
+
+static v7fs_mode_t
+vtype_to_v7fs_mode(enum vtype type)
+{
+    /* Convert Vnode types to V7FS types (sys/vnode.h)*/
+    v7fs_mode_t table[] = { 0, V7FS_IFREG, V7FS_IFDIR, V7FS_IFBLK,
+                V7FS_IFCHR, V7FSBSD_IFLNK, V7FSBSD_IFSOCK,
+                V7FSBSD_IFFIFO };
+    return table[type];
+}
 
 int
 v7fs_mount(struct mount *mp, const char *path, void *data, size_t *data_len)
@@ -435,6 +447,7 @@ v7fs_newvnode(struct mount *mp, struct vnode *dvp, struct vnode *vp,
     int error = 0;
     
     
+    
     size_t dirsize = -1;
     MOP_SET_DIRBUF_SIZE(&dirsize);
     
@@ -450,8 +463,8 @@ v7fs_newvnode(struct mount *mp, struct vnode *dvp, struct vnode *vp,
     memset(&inode, 0, sizeof(inode));
     inode.inode_number = ino;
     inode.mode = vap->va_mode | vtype_to_v7fs_mode (vap->va_type);
-    inode.uid = kauth_cred_geteuid(cr);
-    inode.gid = kauth_cred_getegid(cr);
+    inode.uid = kauth_cred_geteuid(cred);
+    inode.gid = kauth_cred_getegid(cred);
     
     switch (inode.mode & V7FS_IFMT)    {
         default:
@@ -463,7 +476,7 @@ v7fs_newvnode(struct mount *mp, struct vnode *dvp, struct vnode *vp,
         case V7FS_IFBLK:
             inode.nlink = 1;
             inode.device = 0;
-            inode.addr[0] = inode->device;
+            inode.addr[0] = inode.device;
             break;
         case V7FSBSD_IFFIFO:
             /* FALLTHROUGH */
@@ -483,7 +496,7 @@ v7fs_newvnode(struct mount *mp, struct vnode *dvp, struct vnode *vp,
             break;
     }
 
-   // v7fs_inode_writeback(fs, inode);
+    v7fs_inode_writeback(fs, &inode);
 
     
     v7fs_node = pool_get(&v7fs_node_pool, PR_WAITOK);
@@ -519,6 +532,7 @@ v7fs_newvnode(struct mount *mp, struct vnode *dvp, struct vnode *vp,
     }
 
     *new_key = &v7fs_node->inode.inode_number;
+    *key_len = sizeof(ino);
     
     
     return 0;

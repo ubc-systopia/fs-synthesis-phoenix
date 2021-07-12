@@ -253,7 +253,8 @@ const struct genfs_mops v7fs_genfsmops = {
     .mop_add_to_new_block = 0,
     .mop_set_dirbuf_size = v7fs_mop_set_dirbuf_size,
     .mop_update_disk = 0,
-    .mop_set_dirent = v7fs_mop_set_dirent,
+    .mop_get_inumber = v7fs_mop_get_inumber,
+    //.mop_set_dirent = v7fs_mop_set_dirent,
     .mop_htree_has_idx = 0,
     .mop_htree_add_entry = 0,
 };

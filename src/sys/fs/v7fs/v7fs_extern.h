@@ -32,7 +32,7 @@
 #ifndef _FS_V7FS_EXTERN_H_
 #define	_FS_V7FS_EXTERN_H_
 
-#include <fs/v7fs/v7fs_args.h>
+//#include <fs/v7fs/v7fs_args.h>
 
 #include <miscfs/genfs/genfs.h>
 #include <miscfs/genfs/genfs_node.h>
@@ -41,6 +41,7 @@
 #include "v7fs.h"
 #include "v7fs_impl.h"
 #include "v7fs_inode.h"
+#include "v7fs_args.h"
 
 struct v7fs_mount {
 	struct mount *mountp;
@@ -105,12 +106,14 @@ extern const struct genfs_ops v7fs_genfsops;
 
 /* MOP and helper function(s) */
 // Create
-int v7fs_create_setattr(struct v7fs_fileattr *attr, struct componentname* cnp, struct vattr* vap);
 int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize);
 void v7fs_mop_postcreate_update(struct vnode** vpp);
 void v7fs_mop_set_dirbuf_size(size_t *);
-void v7fs_mop_set_dirent(struct vnode *, char *, struct componentname *, size_t *);
 void v7fs_mop_filename_truncate(char* filename, struct componentname *cnp);
+ino_t v7fs_mop_get_inumber(struct vnode *vp);
+void v7fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize, const char* name, size_t namelen);
+int v7fs_mop_get_blk(struct vnode *vp, void **buf, int n, daddr_t *blk);
+void v7fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n);
 
 // Open/close
 int v7fs_mop_open_opt(struct vnode *, int);

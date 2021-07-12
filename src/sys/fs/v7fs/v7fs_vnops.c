@@ -97,25 +97,6 @@ void v7fs_mop_set_dirbuf_size(size_t *dirbuf)
     *dirbuf = sizeof(struct v7fs_dirent);
 }
 
-void v7fs_mop_set_dirent(struct vnode *vp, char *dirbuf, struct componentname *cnp, size_t *newentrysize)
-{
-    return;
-}
-
-
-int v7fs_create_setattr(struct v7fs_fileattr *attr, struct componentname* cnp, struct vattr* vap)
-{
-    int error = 0;
-    kauth_cred_t cr = cnp->cn_cred;
-
-    attr->uid = kauth_cred_geteuid(cr);
-    attr->gid = kauth_cred_getegid(cr);
-    attr->mode = vap->va_mode | vtype_to_v7fs_mode (vap->va_type);
-    attr->device = 0;
-    
-    return error;
-}
-
 void v7fs_mop_filename_truncate(char* filename, struct componentname *cnp)
 {
 
@@ -124,6 +105,90 @@ void v7fs_mop_filename_truncate(char* filename, struct componentname *cnp)
     
 }
 
+ino_t v7fs_mop_get_inumber(struct vnode *vp)
+{
+    struct v7fs_node *new_node = vp->v_data;
+    struct v7fs_inode inode = new_node->inode;
+    return (ino_t) inode.inode_number;
+  
+}
+
+
+void v7fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize, const char* name, size_t namelen)
+{
+    struct v7fs_dirent newdir;
+    ino_t ino_temp = MOP_GET_INUMBER(vp);
+    KASSERT(ino_temp < 0xFFFF);
+    v7fs_ino_t ino = (v7fs_ino_t) ino_temp;
+  
+    newdir.inode_number = ino;
+    
+    memcpy(newdir.name, name, V7FS_NAME_MAX);
+    *newentrysize = sizeof(newdir);
+    
+    memcpy(dirbuf, &newdir, sizeof(struct v7fs_dirent));
+    
+    
+}
+
+int v7fs_mop_dirent_writeback(struct vnode *vp, void* buf, daddr_t blk);
+
+int v7fs_mop_dirent_writeback(struct vnode *vp, void* buf, daddr_t blk)
+{
+    struct v7fs_node *v7node = vp->v_data;
+    struct v7fs_mount *v7fsmount = v7node->v7fsmount;
+    struct v7fs_self *fs = v7fsmount->core;
+    
+    if (!fs->io.write(fs->io.cookie, buf, blk)) {
+        scratch_free(fs, buf);
+        return EIO;
+    }
+    scratch_free(fs, buf);
+    return 0;
+}
+
+void v7fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
+{
+    struct v7fs_dirent *dir = (struct v7fs_dirent *) buf;
+    memcpy(dir + n, dirbuf, dirsize);
+}
+
+int v7fs_mop_get_blk(struct vnode *vp, void **buf, int n, daddr_t *blk)
+{
+    struct v7fs_node *v7node = vp->v_data;
+    struct v7fs_inode inode = v7node->inode;
+    struct v7fs_mount *v7fsmount = v7node->v7fsmount;
+    struct v7fs_self *fs = v7fsmount->core;
+    v7fs_ino_t ino = inode.inode_number;
+    v7fs_daddr_t v7blk = inode.addr[n];
+    
+    if (!(*buf = scratch_read(fs, v7blk))) {
+        v7fs_inode_deallocate(fs, ino);
+        return EIO;
+    }
+    
+    *blk = v7blk;
+    
+    return 0;
+}
+int v7fs_mop_lookup_by_name(struct vnode *dvp, struct vnode *vp, char *filename);
+
+int v7fs_mop_lookup_by_name(struct vnode *dvp, struct vnode *vp, char *filename)
+{
+    struct v7fs_node *parent_node = dvp->v_data;
+    struct v7fs_inode *parent_dir = &parent_node->inode;
+    struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
+    struct v7fs_self *fs = v7fsmount->core;
+    ino_t ino_temp = MOP_GET_INUMBER(vp);
+    v7fs_ino_t ino = (v7fs_ino_t) ino_temp;
+    
+    if (v7fs_file_lookup_by_name(fs, parent_dir, filename, &ino) == 0) {
+        DPRINTF("%s exists\n", filename);
+        return EEXIST;
+    }
+    
+    return 0;
+}
 
 int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize)
 {
@@ -131,63 +196,100 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     struct v7fs_node *parent_node = dvp->v_data;
     struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
     struct v7fs_self *fs = v7fsmount->core;
-    struct mount *mp = v7fsmount->mountp;
-    v7fs_ino_t ino;
+    //struct mount *mp = v7fsmount->mountp;
     char filename[V7FS_NAME_MAX + 1];
     struct v7fs_inode *parent_dir = &parent_node->inode;
-    kauth_cred_t cr = cnp->cn_cred;
+    struct v7fs_node *new_node = (*vpp)->v_data;
+    struct v7fs_inode inode = new_node->inode;
     
+
+    ino_t ino_temp = MOP_GET_INUMBER(*vpp);
+    
+    v7fs_ino_t ino = (v7fs_ino_t) ino_temp;
+    //struct v7fs_dirent *dir;
+    //v7fs_ino_t ino = inode.inode_number;
     size_t dirsize = -1;
     MOP_SET_DIRBUF_SIZE(&dirsize);
     
-    struct v7fs_inode inode;
-    struct v7fs_dirent *dir;
+    daddr_t blk;
     
     v7fs_mop_filename_truncate(filename, cnp);
 
+    if ((error = v7fs_mop_lookup_by_name(dvp, *vpp, filename))) {
+        return error;
+    }
+    
     // Check filename.
     if (v7fs_file_lookup_by_name(fs, parent_dir, filename, &ino) == 0) {
         DPRINTF("%s exists\n", filename);
         return EEXIST;
     }
+
     
-    /* Get new inode.
-    if ((error = v7fs_inode_allocate(fs, &ino)))
+    if (v7fs_inode_isdir(&inode)) {
+        void *buf;
+        if ((error = v7fs_mop_get_blk(*vpp, &buf, 0, &blk))) {
+            return error;
+        }
+        //dir = (struct v7fs_dirent *)buf;
+        v7fs_mop_set_dirent(*vpp, dirbuf, &newentrysize, ".", strlen("."));
+        v7fs_mop_add_direntry(buf, dirbuf, dirsize, 0);
+        v7fs_mop_set_dirent(dvp, dirbuf, &newentrysize, "..", strlen(".."));
+        v7fs_mop_add_direntry(buf, dirbuf, dirsize, 1);
+
+        
+        if ((error = v7fs_mop_dirent_writeback((*vpp), buf, blk)) != 0) {
+            return error;
+        }
+
+    }
+
+
+    /* Target inode
+    if ((error = v7fs_inode_load(fs, &inode, ino)))
         return error; */
-    
-    v7fs_daddr_t blk = inode.addr[0];
+
+    /* Expand datablock. */
+    if ((error = v7fs_datablock_expand(fs, parent_dir, dirsize)))
+        return error;
+
+    /* Read last entry. */
+    if (!(blk = v7fs_datablock_last(fs, parent_dir,
+        v7fs_mop_get_filesize(dvp))))
+        return EIO;
+
+    /* Load dirent block. This vnode(parent dir) is locked by VFS layer. */
     void *buf;
-    if (!(buf = scratch_read(fs, blk))) {
-        v7fs_inode_deallocate(fs, ino);
-        return EIO;
-    }
-    
-    MOP_SET_DIRBUF()
-    dir = (struct v7fs_dirent *)buf;
-    strcpy(dir[0].name, ".");
-    dir[0].inode_number = V7FS_VAL16(fs, ino);
-    strcpy(dir[1].name, "..");
-    dir[1].inode_number = V7FS_VAL16(fs, parent_dir->inode_number);
-    if (!fs->io.write(fs->io.cookie, buf, blk)) {
-        scratch_free(fs, buf);
-        return EIO;
-    }
-    scratch_free(fs, buf);
     
     
-    /* Link this inode to parent directory. */
-    if ((error = v7fs_directory_add_entry(fs, parent_dir, ino, filename)))
-    {
-        DPRINTF("can't add dirent.\n");
+    size_t sz = v7fs_mop_get_filesize(dvp);
+    sz = V7FS_RESIDUE_BSIZE(sz);    /* last block payload. */
+    int n = sz / dirsize - 1;
+    
+    if ((error = v7fs_mop_get_blk(dvp, &buf, n, &blk))) {
         return error;
     }
-    
-    // Get myself vnode.
     /*
-    if ((error = v7fs_vget(mp, ino, LK_EXCLUSIVE, vpp)) != 0) {
-        DPRINTF("v7fs_vget failed.\n");
-        return error;
-    } */
+    if (!(buf = scratch_read(fs, blk)))
+        return EIO; */
+
+    v7fs_mop_set_dirent(*vpp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX);
+    v7fs_mop_add_direntry(buf, dirbuf, dirsize, n);
+    /* Add dirent.
+    dir = (struct v7fs_dirent *)buf;
+    dir[n].inode_number = V7FS_VAL16(fs, ino);
+    memcpy((char *)dir[n].name, filename, V7FS_NAME_MAX); */
+    /* Write back datablock */
+    if (!fs->io.write(fs->io.cookie, buf, blk))
+        error = EIO;
+    scratch_free(fs, buf);
+
+    if (v7fs_inode_isdir(&inode)) {
+        parent_dir->nlink++;
+        v7fs_inode_writeback(fs, parent_dir);
+    }
+
+    DPRINTF("done. (dirent size=%dbyte)\n", parent_dir->filesize);
     
     /* Sync dirent size change. */
     uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));
@@ -988,7 +1090,7 @@ readdir_subr(struct v7fs_self *fs, void *ctx, v7fs_daddr_t blk, size_t sz)
 		if (p->cnt < p->start)
 			continue;
 
-		if ((error = v7fs_inode_load(fs, &inode, dir->inode_number)))
+		if ((error = v7fs_inode_load(fs, &inode, (v7fs_ino_t) dir->inode_number)))
 			break;
 
 		v7fs_dirent_filename(filename, dir->name);
