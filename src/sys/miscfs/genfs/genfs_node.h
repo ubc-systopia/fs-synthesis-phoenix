@@ -56,7 +56,7 @@ struct genfs_ops {
 struct genfs_mops {
     void (*mop_set_dirbuf_size) (size_t *);
     int (*mop_update_disk) (struct vnode **);
-    void (*mop_get_inumber) (struct vnode *, ino_t *);
+    ino_t (*mop_get_inumber) (struct vnode *);
     void (*mop_set_dirent) (struct vnode *, char *, size_t *, const char *, size_t);
     int (*mop_htree_has_idx) (struct vnode *);
     int (*mop_htree_add_entry) (struct vnode *, char *, struct componentname *, size_t);
@@ -144,8 +144,8 @@ struct genfs_mops {
     (*VTOG(dvp)->g_mop->mop_get_newvnode)((dvp), (vpp), (vap), (cnp))
 #define MOP_UPDATE_DISK(vp) \
     (*VTOG(*vp)->g_mop->mop_update_disk)((vp))
-#define MOP_GET_INUMBER(vp, ino) \
-    (*VTOG(vp)->g_mop->mop_get_inumber)((vp), (ino))
+#define MOP_GET_INUMBER(vp) \
+    (*VTOG(vp)->g_mop->mop_get_inumber)((vp))
 #define MOP_SET_DIRENT(vp, buf, newentrysize, name, namelen) \
     (*VTOG(vp)->g_mop->mop_set_dirent)((vp), (buf), (cnp), (newentrysize), (name), namelen)
 #define MOP_HTREE_HAS_IDX(dvp) \
