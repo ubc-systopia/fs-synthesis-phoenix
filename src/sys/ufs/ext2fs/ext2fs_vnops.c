@@ -161,23 +161,52 @@ int ext2fs_mop_update_disk(struct vnode **vpp)
     return error;
 }
 
-void ext2fs_mop_get_inumber(struct vnode *vp, ino_t *ino)
+void ext2fs_mop_get_inumber(struct vnode *vp)
 {
     struct inode *ip = VTOI(vp);
-    *ino = h2fs32(ip->i_number);
+    return h2fs32(ip->i_number);
 }
 
-void ext2fs_mop_set_dirent(struct vnode *vp, char *dirbuf, struct componentname *cnp, size_t *newentrysize)
+int ext2fs_mop_get_dirblksize(struct vnode *vp)
+{
+    struct ufsmount *ump = VFSTOUFS(vp->v_mount);
+    return ump->um_dirblksiz;
+}
+
+uint8_t ext2fs_mop_get_dirtype(struct vnode *vp)
+{
+    struct inode *ip = VTOI(vp);
+    
+    if (EXT2F_HAS_INCOMPAT_FEATURE(ip->i_e2fs, EXT2F_INCOMPAT_FTYPE)) {
+        return inot2ext2dt(IFTODT(ip->i_e2fs_mode));
+    } else {
+        return 0;
+    }
+}
+
+void ext2fs_mop_filename_truncate(char* filename, struct componentname *cnp)
+{
+
+    strncpy(filename, cnp->cn_nameptr, EXT2FS_MAXNAMLEN);
+    filename[EXT2FS_MAXNAMLEN] = '\0';
+    
+}
+
+void ext2fs_mop_get_max_namesize(size_t *max_namesize)
+{
+    *max_namesize = EXT2FS_MAXNAMLEN;
+}
+
+void ext2fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize, const char* name, size_t namelen)
 {
     struct ext2fs_direct newdir;
-    ino_t ino;
-    MOP_GET_INUMBER(vp, &ino);
-    struct ufsmount *ump = VFSTOUFS(vp->v_mount); // reachable through dvp
-    int dirblksiz = ump->um_dirblksiz; // reachable throug dvp
+    ino_t ino = MOP_GET_INUMBER(vp);
+    //struct ufsmount *ump = VFSTOUFS(vp->v_mount);
+    int dirblksiz = MOP_GET_DIRBLKSIZE(vp);
 
     // Dealing with direntry
     newdir.e2d_ino = ino;
-    newdir.e2d_namlen = cnp->cn_namelen;
+    newdir.e2d_namlen = namelen;
     newdir.e2d_reclen = h2fs16(dirblksiz);
     
     /*
@@ -186,9 +215,9 @@ void ext2fs_mop_set_dirent(struct vnode *vp, char *dirbuf, struct componentname 
     } else {
         newdir.e2d_type = 0;
     } */
-    newdir.e2d_type = 0;
-    memcpy(newdir.e2d_name, cnp->cn_nameptr, (unsigned)cnp->cn_namelen + 1);
-    *newentrysize = EXT2FS_DIRSIZ(cnp->cn_namelen);
+    newdir.e2d_type = MOP_GET_DIRTYPE(vp);
+    memcpy(newdir.e2d_name, name, (unsigned)namelen + 1);
+    *newentrysize = EXT2FS_DIRSIZ(namelen);
 
     memcpy(dirbuf, &newdir, sizeof(struct ext2fs_direct));
 }
@@ -213,6 +242,20 @@ int ext2fs_mop_htree_add_entry(struct vnode *dvp, char *dirbuf, struct component
         pdir->i_e2fs_flags &= ~EXT2_INDEX;
         pdir->i_flag |= IN_CHANGE | IN_UPDATE;
     }
+    return error;
+}
+
+int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, daddr_t *blk, int isdir)
+{
+    struct ufs_lookup_results *ulr = &dvp->v_crap;
+    UFS_CHECK_CRAPCOUNTER(dvp);
+    struct buf *bp;
+    int error = 0;
+    
+    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, &bp)) != 0)
+        return error;
+    
+    error = VOP_BWRITE(bp->b_vp, bp);
     return error;
 }
 
@@ -242,18 +285,11 @@ void ext2fs_mop_flag_update(struct vnode *vp)
     
 }
 
-void ext2fs_mop_set_dirblksize(struct vnode *vp, int* dirblksize)
-{
-    struct ufsmount *ump = VFSTOUFS(vp->v_mount);
-    *dirblksize = ump->um_dirblksiz;
-}
-
 int ext2fs_mop_add_to_new_block(struct vnode *dvp, char *dirbuf, struct componentname *cnp, size_t entry_size)
 {
     int error = 0;
     //struct ufsmount *ump = VFSTOUFS(dvp->v_mount); // reachable through dvp
-    int dirblksiz = -1; // reachable throug dvp
-    ext2fs_mop_set_dirblksize(dvp, &dirblksiz);
+    int dirblksiz = MOP_GET_DIRBLKSIZE(dvp); // reachable throug dvp
     struct iovec aiov; // FS-independent
     struct uio auio; // FS-independent
     
@@ -276,18 +312,19 @@ int ext2fs_mop_add_to_new_block(struct vnode *dvp, char *dirbuf, struct componen
         /* XXX should grow with balloc() */
         panic("direnter: frag size");
     else if (!error) {
-        error = ext2fs_mop_set_size(dvp, dirblksiz);
-        //error = MOP_SET_SIZE(dvp, dirblksiz);
+        //error = ext2fs_mop_set_size(dvp, dirblksiz);
+        error = MOP_SET_SIZE(dvp, dirblksiz);
         if (error)
             return error;
-        ext2fs_mop_flag_update(dvp);
-        uvm_vnp_setsize(dvp, ext2fs_mop_node_size(dvp));
+        MOP_FLAG_UPDATE(dvp);
+        //ext2fs_mop_flag_update(dvp);
+        uvm_vnp_setsize(dvp, MOP_NODE_SIZE(dvp));
     }
 
     return error;
 }
 
-void ext2fs_mop_set_dirbuf_size(size_t *dirbuf_size)
+void ext2fs_mop_set_dirbuf_size(struct vnode *vp, size_t *dirbuf_size)
 {
     *dirbuf_size = sizeof(struct ext2fs_direct);
 }
@@ -300,6 +337,60 @@ int ext2fs_mop_create_on_error_routine(struct vnode *vp, int oerror)
     vput(vp);
     
     return oerror;
+}
+
+void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
+{
+    /*
+     * Find space for the new entry. In the simple case, the entry at
+     * offset base will have the space. If it does not, then namei
+     * arranged that compacting the region ulr_offset to
+     * ulr_offset + ulr_count would yield the
+     * space.
+     */
+    ep = (struct ext2fs_direct *)dirbuf;
+    dsize = EXT2FS_DIRSIZ(ep->e2d_namlen);
+    spacefree = fs2h16(ep->e2d_reclen) - dsize;
+    for (loc = fs2h16(ep->e2d_reclen); loc < ulr->ulr_count;) {
+        nep = (struct ext2fs_direct *)(dirbuf + loc);
+        if (ep->e2d_ino) {
+            /* trim the existing slot */
+            ep->e2d_reclen = h2fs16(dsize);
+            ep = (struct ext2fs_direct *)((char *)ep + dsize);
+        } else {
+            /* overwrite; nothing there; header is ours */
+            spacefree += dsize;
+        }
+        dsize = EXT2FS_DIRSIZ(nep->e2d_namlen);
+        spacefree += fs2h16(nep->e2d_reclen) - dsize;
+        loc += fs2h16(nep->e2d_reclen);
+        memcpy((void *)ep, (void *)nep, dsize);
+    }
+    /*
+     * Update the pointer fields in the previous entry (if any),
+     * copy in the new entry, and write out the block.
+     */
+    if (ep->e2d_ino == 0) {
+#ifdef DIAGNOSTIC
+        if (spacefree + dsize < newentrysize)
+            panic("ext2fs_direnter: compact1");
+#endif
+        entry->e2d_reclen = h2fs16(spacefree + dsize);
+    } else {
+#ifdef DIAGNOSTIC
+        if (spacefree < newentrysize) {
+            printf("ext2fs_direnter: compact2 %u %u",
+                (u_int)spacefree, (u_int)newentrysize);
+            panic("ext2fs_direnter: compact2");
+        }
+#endif
+        entry->e2d_reclen = h2fs16(spacefree);
+        ep->e2d_reclen = h2fs16(dsize);
+        ep = (struct ext2fs_direct *)((char *)ep + dsize);
+    }
+    memcpy(ep, entry, (u_int)newentrysize);
+    error = VOP_BWRITE(bp->b_vp, bp);
+    dp->i_flag |= IN_CHANGE | IN_UPDATE;
 }
 
 int
@@ -315,7 +406,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
 
     error = ext2fs_add_entry(dvp, newdir, ulr, newentrysize);
     
-    if (!error && ulr->ulr_endoff && ulr->ulr_endoff < ext2fs_mop_node_size(dvp))
+    if (!error && ulr->ulr_endoff && ulr->ulr_endoff < MOP_NODE_SIZE(dvp))
         error = ext2fs_truncate(dvp, (off_t)ulr->ulr_endoff, IO_SYNC,
             cnp->cn_cred);
 
