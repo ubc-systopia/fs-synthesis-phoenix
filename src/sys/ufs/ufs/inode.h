@@ -48,25 +48,6 @@
 #include <miscfs/genfs/genfs_node.h>
 
 /*
- * Lookup result state (other than the result inode). This is
- * currently stashed in the vnode between VOP_LOOKUP and directory
- * operation VOPs, which is gross.
- *
- * XXX ulr_diroff is a lookup hint from the previos call of VOP_LOOKUP.
- * probably it should not be here.
- */
-struct ufs_lookup_results {
-	int32_t	  ulr_count;	/* Size of free slot in directory. */
-	doff_t	  ulr_endoff;	/* End of useful stuff in directory. */
-	doff_t	  ulr_diroff;	/* Offset in dir, where we found last entry. */
-	doff_t	  ulr_offset;	/* Offset of free space in directory. */
-	u_int32_t ulr_reclen;	/* Size of found directory entry. */
-};
-
-/* notyet XXX */
-#define UFS_CHECK_CRAPCOUNTER(dp) ((void)(dp)->i_crapcounter)
-
-/*
  * Per-filesystem inode extensions.
  */
 struct ffs_inode_ext {

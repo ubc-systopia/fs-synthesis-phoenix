@@ -94,7 +94,7 @@ struct ufs_lookup_results {
     u_int32_t ulr_reclen;    /* Size of found directory entry. */
 };
 
-#define UFS_CHECK_CRAPCOUNTER(vdp) ((void)(vdp)->v_crapcounter)
+#define UFS_CHECK_CRAPCOUNTER(vp) ((void)(vp)->v_crapcounter)
 
 /*
  * The vnode is the focus of all file activity in UNIX.  There is a
