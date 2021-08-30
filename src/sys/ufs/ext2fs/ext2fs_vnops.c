@@ -341,6 +341,12 @@ int ext2fs_mop_create_on_error_routine(struct vnode *vp, int oerror)
 
 void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
 {
+    
+    struct ext2fs_direct *ep, *nep;
+    struct inode *dp = VTOI(dvp);
+    //struct buf *bp;
+    u_int dsize;
+    int error, loc, spacefree;
     /*
      * Find space for the new entry. In the simple case, the entry at
      * offset base will have the space. If it does not, then namei
@@ -389,7 +395,7 @@ void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
         ep = (struct ext2fs_direct *)((char *)ep + dsize);
     }
     memcpy(ep, entry, (u_int)newentrysize);
-    error = VOP_BWRITE(bp->b_vp, bp);
+    //error = VOP_BWRITE(bp->b_vp, bp);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
 }
 
