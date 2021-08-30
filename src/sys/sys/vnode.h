@@ -79,6 +79,24 @@ struct uvm_ractx;
 #endif
 
 /*
+ * Lookup result state (other than the result inode). This is
+ * currently stashed in the vnode between VOP_LOOKUP and directory
+ * operation VOPs, which is gross.
+ *
+ * XXX ulr_diroff is a lookup hint from the previos call of VOP_LOOKUP.
+ * probably it should not be here.
+ */
+struct ufs_lookup_results {
+    int32_t      ulr_count;    /* Size of free slot in directory. */
+    int32_t      ulr_endoff;    /* End of useful stuff in directory. */
+    int32_t      ulr_diroff;    /* Offset in dir, where we found last entry. */
+    int32_t      ulr_offset;    /* Offset of free space in directory. */
+    u_int32_t ulr_reclen;    /* Size of found directory entry. */
+};
+
+#define UFS_CHECK_CRAPCOUNTER(vdp) ((void)(vdp)->v_crapcounter)
+
+/*
  * The vnode is the focus of all file activity in UNIX.  There is a
  * unique vnode allocated for each active file, each current directory,
  * each mounted-on file, text file, and the root.
@@ -169,6 +187,7 @@ struct vnode {
 	kmutex_t	*v_interlock;		/* -   vnode interlock */
 	struct mount	*v_mount;		/* v   ptr to vfs we are in */
 	int		(**v_op)(void *);	/* :   vnode operations vector */
+    
 	union {
 		struct mount	*vu_mountedhere;/* v   ptr to vfs (VDIR) */
 		struct socket	*vu_socket;	/* v   unix ipc (VSOCK) */
@@ -180,7 +199,15 @@ struct vnode {
 	enum vtagtype	v_tag;			/* -   type of underlying data */
 	void 		*v_data;		/* -   private data for fs */
 	struct klist	v_klist;		/* i   notes attached to vnode */
+    int v_sflag;                     /* file sparcity flag */
+    /*
+     * Side effects; used during (and after) directory lookup.
+     * XXX should not be here.
+     */
+    struct ufs_lookup_results v_crap;
+    unsigned v_crapcounter;    /* serial number for v_crap */
 	void		*v_segvguard;		/* e   for PAX_SEGVGUARD */
+
 };
 #define	v_mountedhere	v_un.vu_mountedhere
 #define	v_socket	v_un.vu_socket
