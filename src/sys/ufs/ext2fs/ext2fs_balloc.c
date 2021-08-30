@@ -378,7 +378,7 @@ ext2fs_gop_alloc(struct vnode *vp, off_t off, off_t len, int flags,
 {
 	struct inode *ip = VTOI(vp);
 	struct m_ext2fs *fs = ip->i_e2fs;
-	int error, delta, bshift, bsize;
+	int error, delta, bsize;
 	UVMHIST_FUNC("ext2fs_gop_alloc"); UVMHIST_CALLED(ubchist);
 
     // get the block size
