@@ -92,7 +92,7 @@ v7fs_mode_to_d_type(v7fs_mode_t mode)
 
 // MOP and helper function(s) related to create()
 
-void v7fs_mop_set_dirbuf_size(size_t *dirbuf)
+void v7fs_mop_get_dirbuf_size(size_t *dirbuf)
 {
     *dirbuf = sizeof(struct v7fs_dirent);
 }
@@ -131,8 +131,6 @@ void v7fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize, c
     
 }
 
-int v7fs_mop_dirent_writeback(struct vnode *vp, void* buf, daddr_t blk);
-
 int v7fs_mop_dirent_writeback(struct vnode *vp, void* buf, daddr_t blk)
 {
     struct v7fs_node *v7node = vp->v_data;
@@ -153,27 +151,44 @@ void v7fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
     memcpy(dir + n, dirbuf, dirsize);
 }
 
-int v7fs_mop_get_blk(struct vnode *vp, void **buf, int n, daddr_t *blk)
+void v7fs_mop_get_bufsize(size_t *buf_size)
+{
+    *buf_size = V7FS_BSIZE;
+}
+
+int v7fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, daddr_t *blk, int isdir)
 {
     struct v7fs_node *v7node = vp->v_data;
     struct v7fs_inode inode = v7node->inode;
     struct v7fs_mount *v7fsmount = v7node->v7fsmount;
     struct v7fs_self *fs = v7fsmount->core;
     v7fs_ino_t ino = inode.inode_number;
-    v7fs_daddr_t v7blk = inode.addr[n];
     
-    if (!(*buf = scratch_read(fs, v7blk))) {
-        v7fs_inode_deallocate(fs, ino);
-        return EIO;
+    struct v7fs_node *parent_node = dvp->v_data;
+    struct v7fs_inode *parent_dir = &parent_node->inode;
+    v7fs_daddr_t v7blk;
+
+    
+    if (isdir) {
+        v7blk = inode.addr[n];
+        if (!(*buf = scratch_read(fs, v7blk))) {
+            v7fs_inode_deallocate(fs, ino);
+            return EIO;
+        }
+    } else {
+        if (!(v7blk = v7fs_datablock_last(fs, parent_dir, v7fs_mop_get_filesize(dvp))))
+            return EIO;
+        
+        if (!(*buf = scratch_read(fs, v7blk)))
+            return EIO;
     }
     
     *blk = v7blk;
     
     return 0;
 }
-int v7fs_mop_lookup_by_name(struct vnode *dvp, struct vnode *vp, char *filename);
 
-int v7fs_mop_lookup_by_name(struct vnode *dvp, struct vnode *vp, char *filename)
+int v7fs_mop_lookup_by_name(struct vnode *dvp, struct vnode *vp, char* filename)
 {
     struct v7fs_node *parent_node = dvp->v_data;
     struct v7fs_inode *parent_dir = &parent_node->inode;
@@ -190,109 +205,122 @@ int v7fs_mop_lookup_by_name(struct vnode *dvp, struct vnode *vp, char *filename)
     return 0;
 }
 
-int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize)
+void v7fs_mop_parentdir_update(struct vnode *dvp)
+{
+    struct v7fs_node *parent_node = dvp->v_data;
+    struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
+    struct v7fs_self *fs = v7fsmount->core;
+    struct v7fs_inode *inode = &parent_node->inode;
+    
+    inode->nlink++;
+    v7fs_inode_writeback(fs, inode);
+}
+
+void v7fs_mop_get_max_namesize(size_t *max_namesize)
+{
+    *max_namesize = V7FS_NAME_MAX;
+}
+
+int v7fs_mop_isdir(struct vnode *vp)
+{
+    struct v7fs_node *new_node = vp->v_data;
+    struct v7fs_inode inode = new_node->inode;
+    return v7fs_inode_isdir(&inode);
+}
+
+void v7fs_mop_get_dirent_pos(struct vnode *dvp, int *idx, size_t dirsize)
+{
+    size_t sz = MOP_GET_FILESIZE(dvp);
+    sz = V7FS_RESIDUE_BSIZE(sz);    /* last block payload. */
+    *idx = sz / dirsize - 1;
+}
+
+int v7fs_mop_grow_parentdir(struct vnode *dvp, size_t *dirsize)
+{
+    struct v7fs_node *parent_node = dvp->v_data;
+    struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
+    struct v7fs_self *fs = v7fsmount->core;
+    struct v7fs_inode *parent_inode = &parent_node->inode;
+    
+    return v7fs_datablock_expand(fs, parent_inode, *dirsize);
+    
+}
+
+
+int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize, char *filename)
 {
     int error = 0;
     struct v7fs_node *parent_node = dvp->v_data;
     struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
     struct v7fs_self *fs = v7fsmount->core;
-    //struct mount *mp = v7fsmount->mountp;
-    char filename[V7FS_NAME_MAX + 1];
+    //char filename[V7FS_NAME_MAX + 1];
     struct v7fs_inode *parent_dir = &parent_node->inode;
-    struct v7fs_node *new_node = (*vpp)->v_data;
-    struct v7fs_inode inode = new_node->inode;
+    //struct v7fs_node *new_node = (*vpp)->v_data;
+    //struct v7fs_inode inode = new_node->inode;
+    //daddr_t blk;
     
+    //MOP_FILENAME_TRUNCATE(filename, cnp);
 
-    ino_t ino_temp = MOP_GET_INUMBER(*vpp);
-    
-    v7fs_ino_t ino = (v7fs_ino_t) ino_temp;
-    //struct v7fs_dirent *dir;
-    //v7fs_ino_t ino = inode.inode_number;
     size_t dirsize = -1;
-    MOP_SET_DIRBUF_SIZE(&dirsize);
+    MOP_GET_DIRBUF_SIZE(&dirsize);
     
-    daddr_t blk;
-    
-    v7fs_mop_filename_truncate(filename, cnp);
 
-    if ((error = v7fs_mop_lookup_by_name(dvp, *vpp, filename))) {
+    //void *buf;
+
+    /*
+    if ((error = MOP_LOOKUP_BY_NAME(dvp, *vpp, filename))) {
         return error;
-    }
-    
-    // Check filename.
-    if (v7fs_file_lookup_by_name(fs, parent_dir, filename, &ino) == 0) {
-        DPRINTF("%s exists\n", filename);
-        return EEXIST;
-    }
-
-    
+    } */
+    /*
     if (v7fs_inode_isdir(&inode)) {
-        void *buf;
-        if ((error = v7fs_mop_get_blk(*vpp, &buf, 0, &blk))) {
+        if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             return error;
         }
-        //dir = (struct v7fs_dirent *)buf;
-        v7fs_mop_set_dirent(*vpp, dirbuf, &newentrysize, ".", strlen("."));
-        v7fs_mop_add_direntry(buf, dirbuf, dirsize, 0);
-        v7fs_mop_set_dirent(dvp, dirbuf, &newentrysize, "..", strlen(".."));
-        v7fs_mop_add_direntry(buf, dirbuf, dirsize, 1);
+        MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, ".", strlen("."));
+        MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, 0);
+        MOP_SET_DIRENT(dvp, dirbuf, &newentrysize, "..", strlen(".."));
+        MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, 1);
+        
+        MOP_PARENTDIR_UPDATE(dvp);
 
         
-        if ((error = v7fs_mop_dirent_writeback((*vpp), buf, blk)) != 0) {
+        if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             return error;
         }
-
-    }
-
-
-    /* Target inode
-    if ((error = v7fs_inode_load(fs, &inode, ino)))
-        return error; */
-
-    /* Expand datablock. */
+    } */
+    
+    // Expand datablock.
     if ((error = v7fs_datablock_expand(fs, parent_dir, dirsize)))
         return error;
 
-    /* Read last entry. */
-    if (!(blk = v7fs_datablock_last(fs, parent_dir,
-        v7fs_mop_get_filesize(dvp))))
-        return EIO;
-
-    /* Load dirent block. This vnode(parent dir) is locked by VFS layer. */
-    void *buf;
     
+   // void *buf;
     
-    size_t sz = v7fs_mop_get_filesize(dvp);
-    sz = V7FS_RESIDUE_BSIZE(sz);    /* last block payload. */
+    /*
+    size_t sz = MOP_GET_FILESIZE(dvp);
+    sz = V7FS_RESIDUE_BSIZE(sz);    // last block payload.
     int n = sz / dirsize - 1;
     
-    if ((error = v7fs_mop_get_blk(dvp, &buf, n, &blk))) {
+    if ((error = MOP_GET_BLK(dvp, *vpp, &buf, n, &blk, 0))) {
         return error;
     }
-    /*
-    if (!(buf = scratch_read(fs, blk)))
-        return EIO; */
 
-    v7fs_mop_set_dirent(*vpp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX);
-    v7fs_mop_add_direntry(buf, dirbuf, dirsize, n);
-    /* Add dirent.
-    dir = (struct v7fs_dirent *)buf;
-    dir[n].inode_number = V7FS_VAL16(fs, ino);
-    memcpy((char *)dir[n].name, filename, V7FS_NAME_MAX); */
-    /* Write back datablock */
+    MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX);
+    MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
     if (!fs->io.write(fs->io.cookie, buf, blk))
         error = EIO;
     scratch_free(fs, buf);
+
 
     if (v7fs_inode_isdir(&inode)) {
         parent_dir->nlink++;
         v7fs_inode_writeback(fs, parent_dir);
     }
 
-    DPRINTF("done. (dirent size=%dbyte)\n", parent_dir->filesize);
+    //DPRINTF("done. (dirent size=%dbyte)\n", parent_dir->filesize);
     
-    /* Sync dirent size change. */
-    uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));
+    // Sync dirent size change.
+    uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));*/
 
     return error;
     
@@ -405,16 +433,16 @@ int v7fs_mop_datablock_expand(struct vnode* vp, struct uio* uio, vsize_t bytelen
     struct v7fs_node *v7node = vp->v_data;
     struct v7fs_inode *inode = &v7node->inode;
     struct v7fs_self *fs = v7node->v7fsmount->core;
+    int error = 0;
     vsize_t current_size = v7fs_inode_filesize(inode);
     vsize_t new_size = uio->uio_offset + bytelen;
     ssize_t expand = new_size - current_size;
-    int error = 0;
     
     if (expand > 0) {
         if ((error = v7fs_datablock_expand(fs, inode, expand)))
             return error;
     }
-    
+
     return error;
 }
 

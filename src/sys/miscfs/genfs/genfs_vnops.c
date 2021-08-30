@@ -1533,19 +1533,22 @@ genfs_create(void *v)
     struct vattr *vap = a->a_vap;
     int unlock = 1;
     int error = 0;
-    size_t dirbuf_size = -1;
-    size_t max_namesize =  -1;
-    MOP_SET_MAX_NAMESIZE(&max_namesize);
-    MOP_SET_DIRBUF_SIZE(&dirbuf_size);
+    void *buf;
+    daddr_t blk;
+    size_t dirsize = -1;
+    size_t max_namesize = -1;
+    MOP_GET_MAX_NAMESIZE(&max_namesize);
+    MOP_GET_DIRBUF_SIZE(&dirsize);
     size_t newentrysize = -1;
-    char *dirbuf = (char *) kmem_zalloc(dirbuf_size, KM_SLEEP);
-    char *filename = (char *) kmem_zalloc(max_namesize, KM_SLEEP);
+    char *dirbuf = (char *) kmem_zalloc(dirsize, KM_SLEEP);
+    char *filename = (char *) kmem_zalloc(max_namesize + 1, KM_SLEEP);
     
     
     // At this point needed for msdosfs, since its root directory cannot grow
     if ((error = MOP_CREATE_ROOTSIZE(dvp)))
     {
-        kmem_free(dirbuf, dirbuf_size);
+        kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
         return error;
     }
     
@@ -1555,31 +1558,81 @@ genfs_create(void *v)
      */
     if ((error = MOP_GET_NEWVNODE(dvp, vpp, vap, cnp)))
     {
-        kmem_free(dirbuf, dirbuf_size);
+        kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
         return error;
     }
     
-    /*
+    MOP_FILENAME_TRUNCATE(filename, cnp);
+    
+    if ((error = MOP_LOOKUP_BY_NAME(dvp, *vpp, filename))) {
+        kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
+        return error;
+    }
+    
+    if ((*vpp)->v_type == VDIR) {
+        if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
+            kmem_free(dirbuf, dirsize);
+            kmem_free(filename, max_namesize + 1);
+            return error;
+        }
+        MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, ".", strlen("."));
+        MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, 0);
+        MOP_SET_DIRENT(dvp, dirbuf, &newentrysize, "..", strlen(".."));
+        MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, 1);
+        
+        MOP_PARENTDIR_UPDATE(dvp);
+
+        
+        if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
+            kmem_free(dirbuf, dirsize);
+            kmem_free(filename, max_namesize + 1);
+            return error;
+        }
+    }
+    
     if ((error = MOP_UPDATE_DISK(vpp))) {
-        kmem_free(dirbuf, dirbuf_size);
+        kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
         return error;
     }
     
+    error = MOP_GROW_PARENTDIR(dvp, &dirsize);
     
-    MOP_SET_DIRENT(*vpp, dirbuf, cnp, &newentrysize)
+    int n = 0;
+    MOP_GET_DIRENT_POS(dvp, &n, dirsize);
     
+    if ((error = MOP_GET_BLK(dvp, *vpp, &buf, n, &blk, 0))) {
+        kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
+        return error;
+    }
+    
+    MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, filename, max_namesize);
     
     if (MOP_HTREE_HAS_IDX(dvp)) {
         error = MOP_HTREE_ADD_ENTRY(dvp, dirbuf, cnp, newentrysize);
-        kmem_free(dirbuf, dirbuf_size);
+        kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
         return error;
     }
     
     if (MOP_BLOCK_HAS_SPACE(dvp))
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
-    else */
-        error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize);
-    
+    else {
+        //error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize);
+        MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
+        if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
+            kmem_free(dirbuf, dirsize);
+            kmem_free(filename, max_namesize + 1);
+            return error;
+        }
+        if ((*vpp)->v_type == VDIR)
+            MOP_PARENTDIR_UPDATE(dvp);
+        uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
+    }
+
     MOP_POSTCREATE_UPDATE(vpp);
     
     cache_enter(dvp, *vpp, cnp->cn_nameptr, cnp->cn_namelen, cnp->cn_flags);
@@ -1590,7 +1643,8 @@ genfs_create(void *v)
         VOP_UNLOCK(*vpp);
     }
     
-    kmem_free(dirbuf, dirbuf_size);
+    kmem_free(dirbuf, dirsize);
+    kmem_free(filename, max_namesize + 1);
     
     return error;
 }
@@ -1926,6 +1980,21 @@ int genfs_postcreate_unlock_true(void)
 }
 
 int genfs_postcreate_unlock_false(void)
+{
+    return 0;
+}
+
+int genfs_update_disk_null(struct vnode **vpp)
+{
+    return 0;
+}
+
+int genfs_check_null(struct vnode *dvp)
+{
+    return 0;
+}
+
+int genfs_add_entry_null(struct vnode *dvp, char* dirbuf, struct componentname *cnp, size_t size)
 {
     return 0;
 }

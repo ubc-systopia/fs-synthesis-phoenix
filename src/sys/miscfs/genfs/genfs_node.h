@@ -54,12 +54,21 @@ struct genfs_ops {
 };
 
 struct genfs_mops {
-    void (*mop_set_dirbuf_size) (size_t *);
+    void (*mop_get_dirbuf_size) (size_t *);
+    void (*mop_get_bufsize) (size_t *);
+    void (*mop_get_max_namesize) (size_t *);
     int (*mop_update_disk) (struct vnode **);
     ino_t (*mop_get_inumber) (struct vnode *);
     void (*mop_set_dirent) (struct vnode *, char *, size_t *, const char *, size_t);
+    void (*mop_get_dirent_pos) (struct vnode *, int *, size_t);
     int (*mop_htree_has_idx) (struct vnode *);
     int (*mop_htree_add_entry) (struct vnode *, char *, struct componentname *, size_t);
+    void (*mop_filename_truncate) (char *, struct componentname *);
+    int (*mop_lookup_by_name) (struct vnode *, struct vnode *, char *);
+    int (*mop_get_blk) (struct vnode *, struct vnode *, void **, int, daddr_t *, int);
+    void (*mop_add_direntry) (void *, char *, size_t, int);
+    int (*mop_dirent_writeback) (struct vnode *, void *, daddr_t);
+    void (*mop_parentdir_update) (struct vnode *);
     int (*mop_block_has_space) (struct vnode *);
     int (*mop_add_to_new_block) (struct vnode *, char *, struct componentname *, size_t);
     int (*mop_set_size) (struct vnode *, int);
@@ -68,7 +77,11 @@ struct genfs_mops {
     int (*mop_direnter) (struct vnode *, struct vnode **, struct componentname *, char *, size_t *);
     int (*mop_create_rootsize) (struct vnode *);
     int (*mop_get_newvnode) (struct vnode *, struct vnode **, struct vattr *, struct componentname *);
-    int (*mop_create) (struct vnode *, struct vnode **, struct componentname *, struct vattr *, char *, size_t);
+    int (*mop_create) (struct vnode *, struct vnode **, struct componentname *, struct vattr *, char *, size_t, char *);
+    int (*mop_isdir) (struct vnode *);
+    int (*mop_get_dirblksize) (struct vnode *);
+    uint8_t (*mop_get_dirtype) (struct vnode *);
+    int (*mop_grow_parentdir) (struct vnode *, size_t *);
     void (*mop_postcreate_update) (struct vnode **);
     int (*mop_postcreate_unlock) (void);
     
@@ -136,8 +149,12 @@ struct genfs_mops {
     (*VTOG(vp)->g_mop->mop_close_update)((vp))
 
 
-#define MOP_SET_DIRBUF_SIZE(dirbuf_size) \
-    (*VTOG(dvp)->g_mop->mop_set_dirbuf_size)((dirbuf_size))
+#define MOP_GET_DIRBUF_SIZE(dirbuf_size) \
+    (*VTOG(dvp)->g_mop->mop_get_dirbuf_size)((dirbuf_size))
+#define MOP_GET_BUFSIZE(buf_size) \
+    (*VTOG(dvp)->g_mop->mop_get_bufsize)((buf_size))
+#define MOP_GET_MAX_NAMESIZE(max_namesize) \
+    (*VTOG(dvp)->g_mop->mop_get_max_namesize)((max_namesize))
 #define MOP_CREATE_ROOTSIZE(dvp) \
     (*VTOG(dvp)->g_mop->mop_create_rootsize)((dvp))
 #define MOP_GET_NEWVNODE(dvp, vpp, vap, cnp) \
@@ -147,7 +164,7 @@ struct genfs_mops {
 #define MOP_GET_INUMBER(vp) \
     (*VTOG(vp)->g_mop->mop_get_inumber)((vp))
 #define MOP_SET_DIRENT(vp, buf, newentrysize, name, namelen) \
-    (*VTOG(vp)->g_mop->mop_set_dirent)((vp), (buf), (cnp), (newentrysize), (name), namelen)
+    (*VTOG(vp)->g_mop->mop_set_dirent)((vp), (buf), (newentrysize), (name), (namelen))
 #define MOP_HTREE_HAS_IDX(dvp) \
     (*VTOG(dvp)->g_mop->mop_htree_has_idx)((dvp))
 #define MOP_HTREE_ADD_ENTRY(dvp, dirbuf, cnp, entry_size) \
@@ -156,6 +173,31 @@ struct genfs_mops {
     (*VTOG(dvp)->g_mop->mop_block_has_space)((dvp))
 #define MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, entry_size) \
     (*VTOG(dvp)->g_mop->mop_add_to_new_block)((dvp), (dirbuf), (cnp), (entry_size))
+
+#define MOP_FILENAME_TRUNCATE(filename, cnp) \
+    (*VTOG(dvp)->g_mop->mop_filename_truncate)((filename), (cnp))
+#define MOP_LOOKUP_BY_NAME(dvp, vp, filename) \
+    (*VTOG(dvp)->g_mop->mop_lookup_by_name)((dvp), (vp), (filename))
+#define MOP_GET_BLK(dvp, vp, buf, n, blk, isdir) \
+    (*VTOG(dvp)->g_mop->mop_get_blk)((dvp), (vp), (buf), (n), (blk), (isdir))
+#define MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n) \
+    (*VTOG(dvp)->g_mop->mop_add_direntry)((buf), (dirbuf), (dirsize), (n))
+#define MOP_DIRENT_WRITEBACK(vp, buf, blk) \
+    (*VTOG(vp)->g_mop->mop_dirent_writeback)((vp), (buf), (blk))
+#define MOP_PARENTDIR_UPDATE(dvp) \
+    (*VTOG(dvp)->g_mop->mop_parentdir_update)((dvp))
+#define MOP_GET_DIRENT_POS(dvp, idx, dirsize) \
+    (*VTOG(dvp)->g_mop->mop_get_dirent_pos)((dvp), (idx), (dirsize))
+#define MOP_ISDIR(vp) \
+    (*VTOG(vp)->g_mop->mop_isdir)((vp))
+#define MOP_GET_DIRBLKSIZE(vp) \
+    (*VTOG(vp)->g_mop->mop_get_dirblksize)((vp))
+#define MOP_GET_DIRTYPE(vp) \
+    (*VTOG(vp)->g_mop->mop_get_dirtype)((vp))
+#define MOP_GROW_PARENTDIR(dvp, dirsize) \
+    (*VTOG(dvp)->g_mop->mop_grow_parentdir)((dvp), (dirsize))
+
+
 
 #define MOP_SET_SIZE(dvp, dirblksiz) \
     (*VTOG(dvp)->g_mop->mop_set_size)((dvp), (dirblksiz))
@@ -168,8 +210,8 @@ struct genfs_mops {
 
 
 
-#define MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize) \
-    (*VTOG(dvp)->g_mop->mop_create)((dvp), (vpp), (cnp), (vap), (dirbuf), (newentrysize))
+#define MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename) \
+    (*VTOG(dvp)->g_mop->mop_create)((dvp), (vpp), (cnp), (vap), (dirbuf), (newentrysize), (filename))
 #define MOP_POSTCREATE_UPDATE(vpp) \
     (*VTOG(*vpp)->g_mop->mop_postcreate_update)((vpp))
 

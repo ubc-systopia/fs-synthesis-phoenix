@@ -106,14 +106,22 @@ extern const struct genfs_ops v7fs_genfsops;
 
 /* MOP and helper function(s) */
 // Create
-int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize);
+int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize, char *filename);
 void v7fs_mop_postcreate_update(struct vnode** vpp);
-void v7fs_mop_set_dirbuf_size(size_t *);
+void v7fs_mop_get_dirbuf_size(size_t *);
 void v7fs_mop_filename_truncate(char* filename, struct componentname *cnp);
 ino_t v7fs_mop_get_inumber(struct vnode *vp);
 void v7fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize, const char* name, size_t namelen);
-int v7fs_mop_get_blk(struct vnode *vp, void **buf, int n, daddr_t *blk);
+int v7fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, daddr_t *blk, int isdir);
 void v7fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n);
+int v7fs_mop_lookup_by_name(struct vnode *dvp, struct vnode *vp, char* filename);
+int v7fs_mop_dirent_writeback(struct vnode *vp, void* buf, daddr_t blk);
+void v7fs_mop_get_max_namesize(size_t *);
+void v7fs_mop_parentdir_update(struct vnode *dvp);
+void v7fs_mop_get_dirent_pos(struct vnode *dvp, int *idx, size_t dirsize);
+int v7fs_mop_isdir(struct vnode *vp);
+void v7fs_mop_get_bufsize(size_t *);
+int v7fs_mop_grow_parentdir(struct vnode *, size_t *);
 
 // Open/close
 int v7fs_mop_open_opt(struct vnode *, int);

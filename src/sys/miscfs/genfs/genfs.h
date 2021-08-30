@@ -6,6 +6,9 @@
 #include <sys/vnode.h>
 #include <sys/types.h>
 
+#define GENFS_WRITE_FLAG 0
+#define GENFS_CREATE_FLAG 1
+
 struct componentname;
 struct mount;
 struct acl;
@@ -65,6 +68,9 @@ void genfs_postcreate_update_null(struct vnode**);
 int genfs_check_maxsize_null(struct vnode *, struct uio *);
 int genfs_fill_holes_null(struct vnode *, struct uio *, kauth_cred_t);
 int genfs_null_postwrite_truncate(struct vnode *, struct uio *, int, kauth_cred_t, off_t, int, int);
+int genfs_update_disk_null(struct vnode **);
+int genfs_check_null(struct vnode *);
+int genfs_add_entry_null(struct vnode *, char *, struct componentname *, size_t);
 //--------------------//
 
 int	genfs_do_putpages(struct vnode *, off_t, off_t, int, struct vm_page **);

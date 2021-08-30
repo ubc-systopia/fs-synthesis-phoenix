@@ -449,7 +449,7 @@ v7fs_newvnode(struct mount *mp, struct vnode *dvp, struct vnode *vp,
     
     
     size_t dirsize = -1;
-    MOP_SET_DIRBUF_SIZE(&dirsize);
+    MOP_GET_DIRBUF_SIZE(&dirsize);
     
     KASSERT(dvp->v_mount == mp);
     KASSERT(vap->va_type != VNON);
