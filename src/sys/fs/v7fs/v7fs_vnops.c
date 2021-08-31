@@ -211,7 +211,7 @@ void v7fs_mop_parentdir_update(struct vnode *dvp)
     struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
     struct v7fs_self *fs = v7fsmount->core;
     struct v7fs_inode *inode = &parent_node->inode;
-    
+
     inode->nlink++;
     v7fs_inode_writeback(fs, inode);
 }

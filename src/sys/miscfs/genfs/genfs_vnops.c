@@ -1628,8 +1628,8 @@ genfs_create(void *v)
             kmem_free(filename, max_namesize + 1);
             return error;
         }
-        if ((*vpp)->v_type == VDIR)
-            MOP_PARENTDIR_UPDATE(dvp);
+        //if ((*vpp)->v_type == VDIR)
+        MOP_PARENTDIR_UPDATE(dvp);
         uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
     }
 
