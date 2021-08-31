@@ -164,7 +164,8 @@ int ext2fs_mop_update_disk(struct vnode **vpp)
 void ext2fs_mop_get_inumber(struct vnode *vp)
 {
     struct inode *ip = VTOI(vp);
-    return h2fs32(ip->i_number);
+    ino_t ino = h2fs32(ip->i_number);
+    return ino;
 }
 
 int ext2fs_mop_get_dirblksize(struct vnode *vp)
@@ -245,6 +246,7 @@ int ext2fs_mop_htree_add_entry(struct vnode *dvp, char *dirbuf, struct component
     return error;
 }
 
+/*
 int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, daddr_t *blk, int isdir)
 {
     struct ufs_lookup_results *ulr = &dvp->v_crap;
@@ -257,7 +259,7 @@ int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, d
     
     error = VOP_BWRITE(bp->b_vp, bp);
     return error;
-}
+} */
 
 int ext2fs_mop_set_size(struct vnode *vp, int dirblksiz)
 {
@@ -339,6 +341,7 @@ int ext2fs_mop_create_on_error_routine(struct vnode *vp, int oerror)
     return oerror;
 }
 
+/*
 void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
 {
     
@@ -346,31 +349,24 @@ void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
     //struct buf *bp;
     u_int dsize;
     int loc, spacefree;
-    /*
-     * Find space for the new entry. In the simple case, the entry at
-     * offset base will have the space. If it does not, then namei
-     * arranged that compacting the region ulr_offset to
-     * ulr_offset + ulr_count would yield the
-     * space.
-     */
     ep = (struct ext2fs_direct *)dirbuf;
     dsize = EXT2FS_DIRSIZ(ep->e2d_namlen);
     spacefree = fs2h16(ep->e2d_reclen) - dsize;
     for (loc = fs2h16(ep->e2d_reclen); loc < ulr->ulr_count;) {
         nep = (struct ext2fs_direct *)(dirbuf + loc);
         if (ep->e2d_ino) {
-            /* trim the existing slot */
+            / trim the existing slot
             ep->e2d_reclen = h2fs16(dsize);
             ep = (struct ext2fs_direct *)((char *)ep + dsize);
         } else {
-            /* overwrite; nothing there; header is ours */
+            // overwrite; nothing there; header is ours
             spacefree += dsize;
         }
         dsize = EXT2FS_DIRSIZ(nep->e2d_namlen);
         spacefree += fs2h16(nep->e2d_reclen) - dsize;
         loc += fs2h16(nep->e2d_reclen);
         memcpy((void *)ep, (void *)nep, dsize);
-    }
+    } */
     /*
      * Update the pointer fields in the previous entry (if any),
      * copy in the new entry, and write out the block.
@@ -397,7 +393,7 @@ void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
     memcpy(ep, entry, (u_int)newentrysize); */
     //error = VOP_BWRITE(bp->b_vp, bp);
     //dp->i_flag |= IN_CHANGE | IN_UPDATE;
-}
+//}
 
 int
 ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize) {
