@@ -504,8 +504,8 @@ ext2fs_htree_add_entry(struct vnode *dvp, struct ext2fs_direct *entry,
 	fs = &(m_fs->e2fs);
 	blksize = m_fs->e2fs_bsize;
 
-	if (ip->i_crap.ulr_count != 0) 
-		return ext2fs_add_entry(dvp, entry, &(ip->i_crap), newentrysize);
+	if (dvp->v_crap.ulr_count != 0)
+		return ext2fs_add_entry(dvp, entry, &(dvp->v_crap), newentrysize);
 
 	/* Target directory block is full, split it */
 	memset(&info, 0, sizeof(info));

@@ -343,8 +343,8 @@ ext2fs_lookup(void *v)
 	 * its serial number so elsewhere we can tell if we're using
 	 * stale results. This should not be done this way. XXX.
 	 */
-	results = &dp->i_crap;
-	dp->i_crapcounter++;
+	results = &vdp->v_crap;
+	vdp->v_crapcounter++;
 
 	/*
 	 * Suppress search for slots unless creating

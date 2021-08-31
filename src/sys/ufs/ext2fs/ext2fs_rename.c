@@ -762,7 +762,7 @@ ext2fs_gro_lookup(struct mount *mp, struct vnode *dvp,
 	KASSERT(vp != NULL);
 	VOP_UNLOCK(vp);
 
-out:	*ulr_ret = VTOI(dvp)->i_crap;
+out:	*ulr_ret = dvp->v_crap;
 	*vp_ret = vp;
 	return error;
 }
