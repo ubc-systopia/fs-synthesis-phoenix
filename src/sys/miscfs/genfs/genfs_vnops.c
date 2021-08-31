@@ -1539,7 +1539,7 @@ genfs_create(void *v)
     size_t max_namesize = -1;
     MOP_GET_MAX_NAMESIZE(&max_namesize);
     MOP_GET_DIRBUF_SIZE(&dirsize);
-    size_t newentrysize = -1;
+    size_t newentrysize = dirsize;
     char *dirbuf = (char *) kmem_zalloc(dirsize, KM_SLEEP);
     char *filename = (char *) kmem_zalloc(max_namesize + 1, KM_SLEEP);
     
@@ -1578,9 +1578,9 @@ genfs_create(void *v)
             return error;
         }
         MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, ".", strlen("."));
-        MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, 0);
+        MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, 0);
         MOP_SET_DIRENT(dvp, dirbuf, &newentrysize, "..", strlen(".."));
-        MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, 1);
+        MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, 1);
         
         MOP_PARENTDIR_UPDATE(dvp);
 
@@ -1598,10 +1598,10 @@ genfs_create(void *v)
         return error;
     }
     
-    error = MOP_GROW_PARENTDIR(dvp, &dirsize);
+    error = MOP_GROW_PARENTDIR(dvp, &newentrysize);
     
     int n = 0;
-    MOP_GET_DIRENT_POS(dvp, &n, dirsize);
+    MOP_GET_DIRENT_POS(dvp, &n, newentrysize);
     
     if ((error = MOP_GET_BLK(dvp, *vpp, &buf, n, &blk, 0))) {
         kmem_free(dirbuf, dirsize);
@@ -1622,7 +1622,7 @@ genfs_create(void *v)
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {
         //error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize);
-        MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
+        MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
