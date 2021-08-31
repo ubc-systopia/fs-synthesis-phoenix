@@ -161,7 +161,7 @@ int ext2fs_mop_update_disk(struct vnode **vpp)
     return error;
 }
 
-void ext2fs_mop_get_inumber(struct vnode *vp)
+ino_t ext2fs_mop_get_inumber(struct vnode *vp)
 {
     struct inode *ip = VTOI(vp);
     ino_t ino = h2fs32(ip->i_number);

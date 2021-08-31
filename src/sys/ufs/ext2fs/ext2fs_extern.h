@@ -192,7 +192,7 @@ int ext2fs_create (void *);
 
 /* ext2fs_vnops.c mop functions */
 int ext2fs_mop_update_disk(struct vnode **);
-void ext2fs_mop_get_inumber(struct vnode *);
+ino_t ext2fs_mop_get_inumber(struct vnode *);
 void ext2fs_mop_set_dirent(struct vnode *, char *, size_t *, const char *, size_t);
 int ext2fs_mop_htree_has_idx(struct vnode *);
 int ext2fs_mop_htree_add_entry(struct vnode *, char *, struct componentname *, size_t);
