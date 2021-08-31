@@ -84,7 +84,7 @@ int (**msdosfs_vnodeop_p)(void *);
 const struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
     { &vop_default_desc, vn_default_error },
     { &vop_lookup_desc, msdosfs_lookup },        /* lookup */
-    { &vop_create_desc, genfs_create },        /* create */
+    { &vop_create_desc, msdosfs_create },        /* create */
     { &vop_mknod_desc, genfs_eopnotsupp },        /* mknod */
     { &vop_open_desc, genfs_open },        /* open */
     { &vop_close_desc, genfs_close },        /* close */
@@ -248,6 +248,67 @@ msdosfs_mop_get_filesize(struct vnode* vp)
     vsize_t filesize = msdosfs_filesize(dep);
     
     return filesize;
+}
+
+int
+msdosfs_create(void *v)
+{
+    struct vop_create_v3_args /* {
+        struct vnode *a_dvp;
+        struct vnode **a_vpp;
+        struct componentname *a_cnp;
+        struct vattr *a_vap;
+    } */ *ap = v;
+    struct componentname *cnp = ap->a_cnp;
+    struct denode ndirent;
+    struct denode *dep;
+    struct denode *pdep = VTODE(ap->a_dvp);
+    int error;
+
+#ifdef MSDOSFS_DEBUG
+    printf("msdosfs_create(cnp %p, vap %p\n", cnp, ap->a_vap);
+#endif
+
+    /*
+     * If this is the root directory and there is no space left we
+     * can't do anything.  This is because the root directory can not
+     * change size.
+     */
+    if (pdep->de_StartCluster == MSDOSFSROOT
+        && pdep->de_fndoffset >= pdep->de_FileSize) {
+        error = ENOSPC;
+        goto bad;
+    }
+
+    /*
+     * Create a directory entry for the file, then call createde() to
+     * have it installed. NOTE: DOS files are always executable.  We
+     * use the absence of the owner write bit to make the file
+     * readonly.
+     */
+    memset(&ndirent, 0, sizeof(ndirent));
+    if ((error = uniqdosname(pdep, cnp, ndirent.de_Name)) != 0)
+        goto bad;
+
+    ndirent.de_Attributes = (ap->a_vap->va_mode & S_IWUSR) ?
+                ATTR_ARCHIVE : ATTR_ARCHIVE | ATTR_READONLY;
+    ndirent.de_StartCluster = 0;
+    ndirent.de_FileSize = 0;
+    ndirent.de_dev = pdep->de_dev;
+    ndirent.de_devvp = pdep->de_devvp;
+    ndirent.de_pmp = pdep->de_pmp;
+    ndirent.de_flag = DE_ACCESS | DE_CREATE | DE_UPDATE;
+    DETIMES(&ndirent, NULL, NULL, NULL, pdep->de_pmp->pm_gmtoff);
+    if ((error = createde(&ndirent, pdep, &dep, cnp)) != 0)
+        goto bad;
+    VN_KNOTE(ap->a_dvp, NOTE_WRITE);
+    *ap->a_vpp = DETOV(dep);
+    cache_enter(ap->a_dvp, *ap->a_vpp, cnp->cn_nameptr, cnp->cn_namelen,
+        cnp->cn_flags);
+    return (0);
+
+bad:
+    return (error);
 }
 
 int
