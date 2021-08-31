@@ -343,7 +343,6 @@ void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
 {
     
     struct ext2fs_direct *ep, *nep;
-    struct inode *dp = VTOI(dvp);
     //struct buf *bp;
     u_int dsize;
     int error, loc, spacefree;
@@ -397,7 +396,7 @@ void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
     }
     memcpy(ep, entry, (u_int)newentrysize); */
     //error = VOP_BWRITE(bp->b_vp, bp);
-    dp->i_flag |= IN_CHANGE | IN_UPDATE;
+    //dp->i_flag |= IN_CHANGE | IN_UPDATE;
 }
 
 int
