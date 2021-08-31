@@ -252,7 +252,7 @@ int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, d
     struct buf *bp;
     int error = 0;
     
-    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, &bp)) != 0)
+    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, (char **)buf, &bp)) != 0)
         return error;
     
     error = VOP_BWRITE(bp->b_vp, bp);
@@ -345,7 +345,7 @@ void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
     struct ext2fs_direct *ep, *nep;
     //struct buf *bp;
     u_int dsize;
-    int error, loc, spacefree;
+    int loc, spacefree;
     /*
      * Find space for the new entry. In the simple case, the entry at
      * offset base will have the space. If it does not, then namei
