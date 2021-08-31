@@ -153,8 +153,8 @@ ufs_create(void *v)
 	struct ufs_lookup_results *ulr;
 
 	/* XXX should handle this material another way */
-	ulr = &VTOI(dvp)->i_crap;
-	UFS_CHECK_CRAPCOUNTER(VTOI(dvp));
+	ulr = dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	/*
 	 * UFS_WAPBL_BEGIN(dvp->v_mount) performed by successful
@@ -185,16 +185,18 @@ ufs_mknod(void *v)
 	} */ *ap = v;
 	struct vattr	*vap;
 	struct vnode	**vpp;
+    struct vnode    *dvp;
 	struct inode	*ip;
 	int		error;
 	struct ufs_lookup_results *ulr;
 
 	vap = ap->a_vap;
 	vpp = ap->a_vpp;
+    dvp = ap->a_dvp;
 
 	/* XXX should handle this material another way */
-	ulr = &VTOI(ap->a_dvp)->i_crap;
-	UFS_CHECK_CRAPCOUNTER(VTOI(ap->a_dvp));
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	/*
 	 * UFS_WAPBL_BEGIN(dvp->v_mount) performed by successful
@@ -851,8 +853,8 @@ ufs_remove(void *v)
 #endif
 
 	/* XXX should handle this material another way */
-	ulr = &VTOI(dvp)->i_crap;
-	UFS_CHECK_CRAPCOUNTER(VTOI(dvp));
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	if (vp->v_type == VDIR || (ip->i_flags & (IMMUTABLE | APPEND)) ||
 	    (VTOI(dvp)->i_flags & APPEND))
@@ -902,8 +904,8 @@ ufs_link(void *v)
 	KASSERT(mp == vp->v_mount); /* XXX Not stable without lock.  */
 
 	/* XXX should handle this material another way */
-	ulr = &VTOI(dvp)->i_crap;
-	UFS_CHECK_CRAPCOUNTER(VTOI(dvp));
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	error = vn_lock(vp, LK_EXCLUSIVE);
 	if (error) {
@@ -970,8 +972,8 @@ ufs_whiteout(void *v)
 	struct ufs_lookup_results *ulr;
 
 	/* XXX should handle this material another way */
-	ulr = &VTOI(dvp)->i_crap;
-	UFS_CHECK_CRAPCOUNTER(VTOI(dvp));
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	error = 0;
 	switch (ap->a_flags) {
@@ -1234,8 +1236,8 @@ ufs_mkdir(void *v)
 	struct ufs_lookup_results *ulr;
 
 	/* XXX should handle this material another way */
-	ulr = &dp->i_crap;
-	UFS_CHECK_CRAPCOUNTER(dp);
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	KASSERT(vap->va_type == VDIR);
 
@@ -1406,8 +1408,8 @@ ufs_rmdir(void *v)
 #endif
 
 	/* XXX should handle this material another way */
-	ulr = &dp->i_crap;
-	UFS_CHECK_CRAPCOUNTER(dp);
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	/*
 	 * No rmdir "." or of mounted directories please.
@@ -1497,16 +1499,17 @@ ufs_symlink(void *v)
 		struct vattr		*a_vap;
 		char			*a_target;
 	} */ *ap = v;
-	struct vnode	*vp, **vpp;
+	struct vnode	*vp, **vpp, *dvp;
 	struct inode	*ip;
 	int		len, error;
 	struct ufs_lookup_results *ulr;
 
 	vpp = ap->a_vpp;
+    dvp = ap->a_dvp;
 
 	/* XXX should handle this material another way */
-	ulr = &VTOI(ap->a_dvp)->i_crap;
-	UFS_CHECK_CRAPCOUNTER(VTOI(ap->a_dvp));
+	ulr = &dvp->v_crap;
+	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	/*
 	 * UFS_WAPBL_BEGIN(dvp->v_mount) performed by successful

@@ -102,8 +102,8 @@ struct inode {
 	 * Side effects; used during (and after) directory lookup.
 	 * XXX should not be here.
 	 */
-	struct ufs_lookup_results i_crap;
-	unsigned i_crapcounter;	/* serial number for i_crap */
+	//struct ufs_lookup_results i_crap;
+	//unsigned i_crapcounter;	/* serial number for i_crap */
 
 	/*
 	 * Inode extensions
