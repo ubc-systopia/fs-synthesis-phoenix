@@ -153,7 +153,7 @@ ufs_create(void *v)
 	struct ufs_lookup_results *ulr;
 
 	/* XXX should handle this material another way */
-	ulr = dvp->v_crap;
+	ulr = &dvp->v_crap;
 	UFS_CHECK_CRAPCOUNTER(dvp);
 
 	/*
