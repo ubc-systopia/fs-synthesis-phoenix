@@ -362,7 +362,8 @@ int ext2fs_mop_get_space(struct vnode *dvp, char *buf, char* dirbuf, size_t *dir
 void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n)
 {
     
-    struct ext2fs_direct *ep, *nep;
+    struct ext2fs_direct *ep;
+    //, *nep;
     u_int dsize;
     int loc, spacefree;
     struct ext2fs_direct *entry = (struct ext2fs_direct *) dirbuf;
@@ -401,7 +402,7 @@ void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n
         spacefree += fs2h16(nep->e2d_reclen) - dsize;
         loc += fs2h16(nep->e2d_reclen);
         memcpy((void *)ep, (void *)nep, dsize);
-    }(/
+    }*/
     /*
      * Update the pointer fields in the previous entry (if any),
      * copy in the new entry, and write out the block.
