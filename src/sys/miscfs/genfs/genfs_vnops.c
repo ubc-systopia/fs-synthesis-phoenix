@@ -2014,7 +2014,7 @@ void genfs_get_direntpos_null(struct vnode *dvp, int *idx, size_t dirsize)
     return;
 }
 
-int genfs_add_entry_null(struct vnode *, char *, struct componentname *, size_t)
+int genfs_add_entry_null(struct vnode *dvp, char *dirbuf, struct componentname *cnp, size_t entry_size)
 {
     return 0;
 }
