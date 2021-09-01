@@ -265,7 +265,7 @@ int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, d
         return error;
     }
     if (buf)
-        *buf = bp->b_data + ext2_blkoff(fs, (off_t)ulr->ulr_offset);
+        *buf = (char*)bp->b_data + ext2_blkoff(fs, (off_t)ulr->ulr_offset);
     
     error = VOP_BWRITE(bp->b_vp, bp);
     
