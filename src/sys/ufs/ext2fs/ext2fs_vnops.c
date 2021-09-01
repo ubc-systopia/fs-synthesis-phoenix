@@ -361,12 +361,12 @@ int ext2fs_mop_get_space(struct vnode *dvp, char *buf, char* dirbuf, size_t *dir
 
 void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n)
 {
-    
+    /*
     struct ext2fs_direct *ep;
     //, *nep;
     u_int dsize;
     int spacefree;
-    struct ext2fs_direct *entry = (struct ext2fs_direct *) dirbuf;
+    struct ext2fs_direct *entry = (struct ext2fs_direct *) dirbuf; */
     
     /*
      * If ulr_count is non-zero, then namei found space
@@ -407,7 +407,7 @@ void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n
      * Update the pointer fields in the previous entry (if any),
      * copy in the new entry, and write out the block.
      */
-    
+    /*
     if (ep->e2d_ino == 0) {
 #ifdef DIAGNOSTIC
         if (spacefree + dsize < newentrysize)
@@ -426,7 +426,7 @@ void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n
         ep->e2d_reclen = h2fs16(dsize);
         ep = (struct ext2fs_direct *)((char *)ep + dsize);
     }
-    memcpy(ep, entry, (u_int)newentrysize);
+    memcpy(ep, entry, (u_int)newentrysize); */
     //error = VOP_BWRITE(bp->b_vp, bp);
     //dp->i_flag |= IN_CHANGE | IN_UPDATE;
 }
