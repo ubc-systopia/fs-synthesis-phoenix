@@ -1994,7 +1994,7 @@ int genfs_check_null(struct vnode *dvp)
     return 0;
 }
 
-int genfs_dirent_writeback_null(struct vnode *vp, void* buf, daddr_t blk)
+int genfs_dirent_writeback_null(struct vnode *vp, char* buf, daddr_t blk)
 {
     return  0;
 }
