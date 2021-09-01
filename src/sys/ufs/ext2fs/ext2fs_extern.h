@@ -201,7 +201,7 @@ void ext2fs_mop_flag_update(struct vnode *);
 int ext2fs_mop_set_size(struct vnode *, int);
 int ext2fs_mop_get_dirblksize(struct vnode *);
 uint8_t ext2fs_mop_get_dirtype(struct vnode *);
-void ext2fs_mop_set_dirbuf_size(struct vnode *, size_t *);
+void ext2fs_mop_set_dirbuf_size(size_t *);
 void ext2fs_mop_filename_truncate(char *, struct componentname *);
 void ext2fs_mop_get_max_namesize(size_t *);
 int ext2fs_mop_block_has_space(struct vnode *);

@@ -337,7 +337,7 @@ int ext2fs_mop_add_to_new_block(struct vnode *dvp, char *dirbuf, struct componen
     return error;
 }
 
-void ext2fs_mop_set_dirbuf_size(struct vnode *vp, size_t *dirbuf_size)
+void ext2fs_mop_set_dirbuf_size(size_t *dirbuf_size)
 {
     *dirbuf_size = sizeof(struct ext2fs_direct);
 }
@@ -365,7 +365,7 @@ void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n
     struct ext2fs_direct *ep;
     //, *nep;
     u_int dsize;
-    int loc, spacefree;
+    int spacefree;
     struct ext2fs_direct *entry = (struct ext2fs_direct *) dirbuf;
     
     /*
