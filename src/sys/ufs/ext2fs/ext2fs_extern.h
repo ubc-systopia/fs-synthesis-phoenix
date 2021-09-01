@@ -209,6 +209,7 @@ uint64_t ext2fs_mop_node_size(struct vnode *);
 int ext2fs_mop_create_on_error_routine(struct vnode *, int);
 void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n);
 int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, daddr_t *blk, int isdir);
+void ext2fs_mop_parentdir_update(struct vnode *dvp);
 
 int ext2fs_mop_create(struct vnode *, struct vnode**, struct componentname *, struct vattr *, char *, size_t);
 int ext2fs_mop_open_opt(struct vnode *, int);
