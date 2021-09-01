@@ -1533,7 +1533,7 @@ genfs_create(void *v)
     struct vattr *vap = a->a_vap;
     int unlock = 1;
     int error = 0;
-    void *buf;
+    //void *buf;
     daddr_t blk;
     size_t dirsize = -1;
     size_t max_namesize = -1;
@@ -1542,6 +1542,7 @@ genfs_create(void *v)
     size_t newentrysize = dirsize;
     char *dirbuf = (char *) kmem_zalloc(dirsize, KM_SLEEP);
     char *filename = (char *) kmem_zalloc(max_namesize + 1, KM_SLEEP);
+    char *buf = (char *) kmem_zalloc(dirsize, KM_SLEEP);
     
     
     // At this point needed for msdosfs, since its root directory cannot grow

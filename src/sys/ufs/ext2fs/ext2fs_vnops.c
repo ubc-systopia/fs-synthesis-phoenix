@@ -353,7 +353,7 @@ int ext2fs_mop_create_on_error_routine(struct vnode *vp, int oerror)
 }
 
 
-void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t newentrysize, int n)
+void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n)
 {
     
     struct ext2fs_direct *ep, *nep;
@@ -409,7 +409,7 @@ void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t newentrysize, int n
 
 void ext2fs_mop_parentdir_update(struct vnode *dvp)
 {
-    inode *dp = VTOI(dvp);
+    struct inode *dp = VTOI(dvp);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
 }
 
