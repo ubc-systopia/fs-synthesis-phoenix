@@ -207,7 +207,7 @@ void ext2fs_mop_get_max_namesize(size_t *);
 int ext2fs_mop_block_has_space(struct vnode *);
 uint64_t ext2fs_mop_node_size(struct vnode *);
 int ext2fs_mop_create_on_error_routine(struct vnode *, int);
-void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n);
+void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t dirsize, int n);
 int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **bpp, int n, daddr_t *blk, int isdir);
 void ext2fs_mop_parentdir_update(struct vnode *dvp);
 
