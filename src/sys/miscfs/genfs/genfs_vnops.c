@@ -1994,8 +1994,23 @@ int genfs_check_null(struct vnode *dvp)
     return 0;
 }
 
-int genfs_add_entry_null(struct vnode *dvp, char* dirbuf, struct componentname *cnp, size_t size)
+int genfs_dirent_writeback_null(struct vnode *vp, void* buf, daddr_t blk)
+{
+    return  0;
+}
+
+int genfs_lookup_by_name_null(struct vnode *dvp, struct vnode *vp, char* filename)
 {
     return 0;
+}
+
+int genfs_grow_parentdir_null(struct vnode *dvp, size_t *dirsize)
+{
+    return 0;
+}
+
+void genfs_get_direntpos_null(struct vnode *dvp, int *idx, size_t dirsize)
+{
+    return;
 }
 

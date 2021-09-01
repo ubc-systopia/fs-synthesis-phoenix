@@ -246,20 +246,31 @@ int ext2fs_mop_htree_add_entry(struct vnode *dvp, char *dirbuf, struct component
     return error;
 }
 
-/*
+
 int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, daddr_t *blk, int isdir)
 {
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
     struct buf *bp;
     int error = 0;
+    struct inode *ip = VTOI(dvp);
+    struct m_ext2fs *fs = ip->i_e2fs;
+    daddr_t lbn = ext2_lblkno(fs, offset);
     
+    /*
     if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, (char **)buf, &bp)) != 0)
+        return error; */
+
+    if ((error = bread(vp, lbn, fs->e2fs_bsize, 0, &bp)) != 0) {
         return error;
+    }
+    if (buf)
+        *buf = bp->b_data + ext2_blkoff(fs, offset);
     
     error = VOP_BWRITE(bp->b_vp, bp);
+    
     return error;
-} */
+}
 
 int ext2fs_mop_set_size(struct vnode *vp, int dirblksiz)
 {
@@ -341,21 +352,22 @@ int ext2fs_mop_create_on_error_routine(struct vnode *vp, int oerror)
     return oerror;
 }
 
-/*
-void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
+
+void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t newentrysize, int n)
 {
     
     struct ext2fs_direct *ep, *nep;
-    //struct buf *bp;
     u_int dsize;
     int loc, spacefree;
-    ep = (struct ext2fs_direct *)dirbuf;
+    struct ext2fs_direct *entry = (struct ext2fs_direct *) dirbuf;
+    
+    ep = (struct ext2fs_direct *)buf;
     dsize = EXT2FS_DIRSIZ(ep->e2d_namlen);
     spacefree = fs2h16(ep->e2d_reclen) - dsize;
     for (loc = fs2h16(ep->e2d_reclen); loc < ulr->ulr_count;) {
-        nep = (struct ext2fs_direct *)(dirbuf + loc);
+        nep = (struct ext2fs_direct *)(buf + loc);
         if (ep->e2d_ino) {
-            / trim the existing slot
+            // trim the existing slot
             ep->e2d_reclen = h2fs16(dsize);
             ep = (struct ext2fs_direct *)((char *)ep + dsize);
         } else {
@@ -366,12 +378,12 @@ void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
         spacefree += fs2h16(nep->e2d_reclen) - dsize;
         loc += fs2h16(nep->e2d_reclen);
         memcpy((void *)ep, (void *)nep, dsize);
-    } */
+    }
     /*
      * Update the pointer fields in the previous entry (if any),
      * copy in the new entry, and write out the block.
      */
-    /*
+    
     if (ep->e2d_ino == 0) {
 #ifdef DIAGNOSTIC
         if (spacefree + dsize < newentrysize)
@@ -390,10 +402,16 @@ void ext2fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
         ep->e2d_reclen = h2fs16(dsize);
         ep = (struct ext2fs_direct *)((char *)ep + dsize);
     }
-    memcpy(ep, entry, (u_int)newentrysize); */
+    memcpy(ep, entry, (u_int)newentrysize);
     //error = VOP_BWRITE(bp->b_vp, bp);
     //dp->i_flag |= IN_CHANGE | IN_UPDATE;
-//}
+}
+
+void ext2fs_mop_parentdir_update(struct vnode *dvp)
+{
+    inode *dp = VTOI(dvp);
+    dp->i_flag |= IN_CHANGE | IN_UPDATE;
+}
 
 int
 ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize) {
