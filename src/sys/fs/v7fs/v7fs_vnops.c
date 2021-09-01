@@ -131,7 +131,7 @@ void v7fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize, c
     
 }
 
-int v7fs_mop_dirent_writeback(struct vnode *vp, void* buf, daddr_t blk)
+int v7fs_mop_dirent_writeback(struct vnode *vp, char* buf, daddr_t blk)
 {
     struct v7fs_node *v7node = vp->v_data;
     struct v7fs_mount *v7fsmount = v7node->v7fsmount;
@@ -145,7 +145,7 @@ int v7fs_mop_dirent_writeback(struct vnode *vp, void* buf, daddr_t blk)
     return 0;
 }
 
-void v7fs_mop_add_direntry(void *buf, char* dirbuf, size_t dirsize, int n)
+void v7fs_mop_add_direntry(char *buf, char* dirbuf, size_t dirsize, int n)
 {
     struct v7fs_dirent *dir = (struct v7fs_dirent *) buf;
     memcpy(dir + n, dirbuf, dirsize);
@@ -156,7 +156,7 @@ void v7fs_mop_get_bufsize(size_t *buf_size)
     *buf_size = V7FS_BSIZE;
 }
 
-int v7fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, daddr_t *blk, int isdir)
+int v7fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir)
 {
     struct v7fs_node *v7node = vp->v_data;
     struct v7fs_inode inode = v7node->inode;

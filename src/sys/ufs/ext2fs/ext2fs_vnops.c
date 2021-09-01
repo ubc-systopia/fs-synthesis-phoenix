@@ -247,7 +247,7 @@ int ext2fs_mop_htree_add_entry(struct vnode *dvp, char *dirbuf, struct component
 }
 
 
-int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, daddr_t *blk, int isdir)
+int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir)
 {
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
@@ -255,7 +255,7 @@ int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, void **buf, int n, d
     int error = 0;
     struct inode *ip = VTOI(dvp);
     struct m_ext2fs *fs = ip->i_e2fs;
-    daddr_t lbn = ext2_lblkno(fs, offset);
+    daddr_t lbn = ext2_lblkno(fs, (off_t)ulr->ulr_offset);
     
     /*
     if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, (char **)buf, &bp)) != 0)
@@ -352,6 +352,12 @@ int ext2fs_mop_create_on_error_routine(struct vnode *vp, int oerror)
     return oerror;
 }
 
+/*
+int ext2fs_mop_get_space(struct vnode *dvp, char *buf, char* dirbuf, size_t *dirsize)
+{
+    
+} */
+
 
 void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n)
 {
@@ -361,6 +367,23 @@ void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n
     int loc, spacefree;
     struct ext2fs_direct *entry = (struct ext2fs_direct *) dirbuf;
     
+    /*
+     * If ulr_count is non-zero, then namei found space
+     * for the new entry in the range ulr_offset to
+     * ulr_offset + ulr_count in the directory.
+     * To use this space, we may have to compact the entries located
+     * there, by copying them together towards the beginning of the
+     * block, leaving the free space in one usable chunk at the end.
+     */
+    
+    /*
+     * Find space for the new entry. In the simple case, the entry at
+     * offset base will have the space. If it does not, then namei
+     * arranged that compacting the region ulr_offset to
+     * ulr_offset + ulr_count would yield the
+     * space.
+     */
+    /*
     ep = (struct ext2fs_direct *)buf;
     dsize = EXT2FS_DIRSIZ(ep->e2d_namlen);
     spacefree = fs2h16(ep->e2d_reclen) - dsize;
@@ -378,7 +401,7 @@ void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n
         spacefree += fs2h16(nep->e2d_reclen) - dsize;
         loc += fs2h16(nep->e2d_reclen);
         memcpy((void *)ep, (void *)nep, dsize);
-    }
+    }(/
     /*
      * Update the pointer fields in the previous entry (if any),
      * copy in the new entry, and write out the block.
