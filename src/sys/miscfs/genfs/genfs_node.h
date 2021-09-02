@@ -82,6 +82,7 @@ struct genfs_mops {
     int (*mop_get_dirblksize) (struct vnode *);
     uint8_t (*mop_get_dirtype) (struct vnode *);
     int (*mop_grow_parentdir) (struct vnode *, size_t *);
+    void (*mop_compact_space) (struct vnode *, char *, char *, size_t);
     void (*mop_postcreate_update) (struct vnode **);
     int (*mop_postcreate_unlock) (void);
     
@@ -173,6 +174,9 @@ struct genfs_mops {
     (*VTOG(dvp)->g_mop->mop_block_has_space)((dvp))
 #define MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, entry_size) \
     (*VTOG(dvp)->g_mop->mop_add_to_new_block)((dvp), (dirbuf), (cnp), (entry_size))
+#define MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize) \
+    (*VTOG(dvp)->g_mop->mop_compact_space)((dvp), (buf), (dirbuf), (newentrysize))
+
 
 #define MOP_FILENAME_TRUNCATE(filename, cnp) \
     (*VTOG(dvp)->g_mop->mop_filename_truncate)((filename), (cnp))

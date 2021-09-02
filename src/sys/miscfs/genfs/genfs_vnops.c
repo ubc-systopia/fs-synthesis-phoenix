@@ -1572,7 +1572,7 @@ genfs_create(void *v)
         return error;
     }
     
-    if ((*vpp)->v_type == VDIR) {
+    if (MOP_ISDIR(*vpp)) {
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
@@ -1623,6 +1623,7 @@ genfs_create(void *v)
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {
         //error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize);
+        MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
         MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             kmem_free(dirbuf, dirsize);
@@ -2018,5 +2019,10 @@ void genfs_get_direntpos_null(struct vnode *dvp, int *idx, size_t dirsize)
 int genfs_add_entry_null(struct vnode *dvp, char *dirbuf, struct componentname *cnp, size_t entry_size)
 {
     return 0;
+}
+
+void genfs_compactspace_null(struct vnode *dvp, char* buf, char* dirbuf, size_t newentrysize)
+{
+    return;
 }
 

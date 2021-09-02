@@ -71,6 +71,7 @@ int genfs_null_postwrite_truncate(struct vnode *, struct uio *, int, kauth_cred_
 int genfs_update_disk_null(struct vnode **);
 int genfs_check_null(struct vnode *);
 int genfs_add_entry_null(struct vnode *, char *, struct componentname *, size_t);
+void genfs_compactspace_null(struct vnode *, char *, char *, size_t);
 int genfs_dirent_writeback_null(struct vnode *, char *, daddr_t);
 int genfs_lookup_by_name_null(struct vnode *, struct vnode *, char *);
 int genfs_grow_parentdir_null(struct vnode *, size_t *);

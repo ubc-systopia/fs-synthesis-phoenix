@@ -352,21 +352,19 @@ int ext2fs_mop_create_on_error_routine(struct vnode *vp, int oerror)
     return oerror;
 }
 
-/*
-int ext2fs_mop_get_space(struct vnode *dvp, char *buf, char* dirbuf, size_t *dirsize)
+int ext2fs_mop_create_isdir(struct vnode *vp)
 {
-    
-} */
+    return 0;
+}
 
-
-void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n)
+void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t newentrysize)
 {
-    /*
-    struct ext2fs_direct *ep;
-    //, *nep;
+    struct ext2fs_direct *ep, *nep;
     u_int dsize;
     int spacefree;
-    struct ext2fs_direct *entry = (struct ext2fs_direct *) dirbuf; */
+    struct ext2fs_direct *entry = (struct ext2fs_direct *) dirbuf;
+    struct ufs_lookup_results *ulr = &dvp->v_crap;
+    UFS_CHECK_CRAPCOUNTER(dvp);
     
     /*
      * If ulr_count is non-zero, then namei found space
@@ -384,7 +382,7 @@ void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n
      * ulr_offset + ulr_count would yield the
      * space.
      */
-    /*
+    
     ep = (struct ext2fs_direct *)buf;
     dsize = EXT2FS_DIRSIZ(ep->e2d_namlen);
     spacefree = fs2h16(ep->e2d_reclen) - dsize;
@@ -402,12 +400,12 @@ void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n
         spacefree += fs2h16(nep->e2d_reclen) - dsize;
         loc += fs2h16(nep->e2d_reclen);
         memcpy((void *)ep, (void *)nep, dsize);
-    }*/
+    }
     /*
      * Update the pointer fields in the previous entry (if any),
      * copy in the new entry, and write out the block.
      */
-    /*
+    
     if (ep->e2d_ino == 0) {
 #ifdef DIAGNOSTIC
         if (spacefree + dsize < newentrysize)
@@ -426,7 +424,16 @@ void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n
         ep->e2d_reclen = h2fs16(dsize);
         ep = (struct ext2fs_direct *)((char *)ep + dsize);
     }
-    memcpy(ep, entry, (u_int)newentrysize); */
+    
+    buf = (char *) ep;
+    dirbuf = (char *) entry;
+}
+
+
+void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t newentrysize, int n)
+{
+    struct ext2fs_direct *ep = (struct ext2fs_direct *) buf;
+    memcpy(ep, dirbuf, (u_int)newentrysize);
     //error = VOP_BWRITE(bp->b_vp, bp);
     //dp->i_flag |= IN_CHANGE | IN_UPDATE;
 }
