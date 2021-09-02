@@ -361,7 +361,7 @@ void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t
 {
     struct ext2fs_direct *ep, *nep;
     u_int dsize;
-    int spacefree;
+    int loc, spacefree;
     struct ext2fs_direct *entry = (struct ext2fs_direct *) dirbuf;
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
