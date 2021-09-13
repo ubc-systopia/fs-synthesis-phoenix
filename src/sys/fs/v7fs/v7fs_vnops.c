@@ -462,6 +462,65 @@ void v7fs_mop_postwrite_update(struct vnode* vp, struct uio* uio, kauth_cred_t c
 /* Original v7fs functions */
 
 int
+v7fs_create(void *v)
+{
+    struct vop_create_v3_args /* {
+                  struct vnode *a_dvp;
+                  struct vnode **a_vpp;
+                  struct componentname *a_cnp;
+                  struct vattr *a_vap;
+                  } */ *a = v;
+    struct v7fs_node *parent_node = a->a_dvp->v_data;
+    struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
+    struct v7fs_self *fs = v7fsmount->core;
+    struct mount *mp = v7fsmount->mountp;
+    struct v7fs_fileattr attr;
+    struct vattr *va = a->a_vap;
+    kauth_cred_t cr = a->a_cnp->cn_cred;
+    v7fs_ino_t ino;
+    int error = 0;
+
+    DPRINTF("%s parent#%d\n", a->a_cnp->cn_nameptr,
+        parent_node->inode.inode_number);
+    KDASSERT((va->va_type == VREG) || (va->va_type == VSOCK));
+
+    memset(&attr, 0, sizeof(attr));
+    attr.uid = kauth_cred_geteuid(cr);
+    attr.gid = kauth_cred_getegid(cr);
+    attr.mode = va->va_mode | vtype_to_v7fs_mode (va->va_type);
+    attr.device = 0;
+
+    /* Allocate disk entry. and register its entry to parent directory. */
+    if ((error = v7fs_file_allocate(fs, &parent_node->inode,
+            a->a_cnp->cn_nameptr, &attr, &ino))) {
+        DPRINTF("v7fs_file_allocate failed.\n");
+        return error;
+    }
+    /* Sync dirent size change. */
+    uvm_vnp_setsize(a->a_dvp, v7fs_inode_filesize(&parent_node->inode));
+
+    /* Get myself vnode. */
+    *a->a_vpp = 0;
+    error = v7fs_vget(mp, ino, LK_EXCLUSIVE, a->a_vpp);
+    if (error != 0) {
+        DPRINTF("v7fs_vget failed.\n");
+        return error;
+    }
+
+    /* Scheduling update time. real update by v7fs_update */
+    struct v7fs_node *newnode = (*a->a_vpp)->v_data;
+    newnode->update_ctime = true;
+    newnode->update_mtime = true;
+    newnode->update_atime = true;
+    DPRINTF("allocated %s->#%d\n", a->a_cnp->cn_nameptr, ino);
+
+    if (error == 0)
+        VOP_UNLOCK(*a->a_vpp);
+
+    return error;
+}
+
+int
 v7fs_lookup(void *v)
 {
 	struct vop_lookup_v2_args  /*{
