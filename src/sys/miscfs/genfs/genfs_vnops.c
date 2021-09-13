@@ -1610,7 +1610,7 @@ genfs_create(void *v)
         return error;
     }
     
-    MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, filename, cnp->cn_namelen);
+    MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, filename, max_namesize);
     
     if (MOP_HTREE_HAS_IDX(dvp)) {
         error = MOP_HTREE_ADD_ENTRY(dvp, dirbuf, cnp, newentrysize);
