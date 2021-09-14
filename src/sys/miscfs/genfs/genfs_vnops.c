@@ -1572,6 +1572,7 @@ genfs_create(void *v)
         return error;
     }
     
+    /*
     if (MOP_ISDIR(*vpp)) {
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             kmem_free(dirbuf, dirsize);
@@ -1591,7 +1592,7 @@ genfs_create(void *v)
             kmem_free(filename, max_namesize + 1);
             return error;
         }
-    }
+    } */
     
     if ((error = MOP_UPDATE_DISK(vpp))) {
         kmem_free(dirbuf, dirsize);
