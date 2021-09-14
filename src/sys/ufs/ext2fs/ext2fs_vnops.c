@@ -171,7 +171,8 @@ ino_t ext2fs_mop_get_inumber(struct vnode *vp)
 int ext2fs_mop_get_dirblksize(struct vnode *vp)
 {
     struct ufsmount *ump = VFSTOUFS(vp->v_mount);
-    return ump->um_dirblksiz;
+    int blksize = ump->um_dirblksiz;
+    return blksize;
 }
 
 uint8_t ext2fs_mop_get_dirtype(struct vnode *vp)
