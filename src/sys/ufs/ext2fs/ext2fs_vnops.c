@@ -387,6 +387,7 @@ void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t
     ep = (struct ext2fs_direct *)buf;
     dsize = EXT2FS_DIRSIZ(ep->e2d_namlen);
     spacefree = fs2h16(ep->e2d_reclen) - dsize;
+    panic("ext2fs after mop_set_dirent");
     for (loc = fs2h16(ep->e2d_reclen); loc < ulr->ulr_count;) {
         nep = (struct ext2fs_direct *)(buf + loc);
         if (ep->e2d_ino) {

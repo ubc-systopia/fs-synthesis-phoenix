@@ -1623,7 +1623,6 @@ genfs_create(void *v)
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {
         //error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize);
-        panic("ext2fs after mop_set_dirent");
         MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
         MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
