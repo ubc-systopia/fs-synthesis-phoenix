@@ -217,7 +217,7 @@ void ext2fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize,
         newdir.e2d_type = 0;
     } */
     newdir.e2d_type = MOP_GET_DIRTYPE(vp);
-    panic("ext2fs after get dirblksize");
+    //panic("ext2fs after get dirblksize");
     memcpy(newdir.e2d_name, name, (unsigned)namelen);
     *newentrysize = EXT2FS_DIRSIZ(namelen);
 

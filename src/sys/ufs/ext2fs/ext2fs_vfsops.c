@@ -194,6 +194,7 @@ static const struct genfs_mops ext2fs_genfsmops = {
     .mop_grow_parentdir = genfs_grow_parentdir_null,
     //.mop_create = ext2fs_mop_create,
     .mop_get_dirblksize = ext2fs_mop_get_dirblksize,
+    .mop_get_dirtype = ext2fs_mop_get_dirtype,
     .mop_get_newvnode = genfs_new_vnode,
     .mop_postcreate_update = genfs_postcreate_update_null,
     .mop_postcreate_unlock = genfs_postcreate_unlock_true,
