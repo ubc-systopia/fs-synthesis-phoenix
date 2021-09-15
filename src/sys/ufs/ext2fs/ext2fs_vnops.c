@@ -204,7 +204,7 @@ void ext2fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize,
     ino_t ino = MOP_GET_INUMBER(vp);
     //struct ufsmount *ump = VFSTOUFS(vp->v_mount);
     int dirblksiz = MOP_GET_DIRBLKSIZE(vp);
-    panic("ext2fs after get dirblksize");
+    //panic("ext2fs after get dirblksize");
 
     // Dealing with direntry
     newdir.e2d_ino = ino;
