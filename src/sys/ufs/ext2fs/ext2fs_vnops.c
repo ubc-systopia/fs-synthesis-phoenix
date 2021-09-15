@@ -437,6 +437,22 @@ void ext2fs_mop_parentdir_update(struct vnode *dvp)
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
 }
 
+int ext2fs_postcreate_truncate(struct vnode *dvp, struct vnode *vp, struct componentname *cnp, int oerror)
+{
+    int error = oerror;
+    struct ufs_lookup_results *ulr = &dvp->v_crap;
+    
+    UFS_CHECK_CRAPCOUNTER(dvp);
+    if (!error && ulr->ulr_endoff && ulr->ulr_endoff < MOP_NODE_SIZE(dvp))
+        error = ext2fs_truncate(dvp, (off_t)ulr->ulr_endoff, IO_SYNC,
+            cnp->cn_cred);
+
+    if (error != 0)
+        return ext2fs_mop_create_on_error_routine(vp, error);
+        
+    return error;
+}
+
 int
 ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize) {
     int error = 0;

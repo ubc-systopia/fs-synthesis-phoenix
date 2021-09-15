@@ -198,6 +198,7 @@ static const struct genfs_mops ext2fs_genfsmops = {
     .mop_get_newvnode = genfs_new_vnode,
     .mop_postcreate_update = genfs_postcreate_update_null,
     .mop_postcreate_unlock = genfs_postcreate_unlock_true,
+    .mop_postcreate_truncate = ext2fs_postcreate_truncate,
     
 };
 

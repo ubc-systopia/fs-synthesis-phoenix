@@ -85,6 +85,7 @@ struct genfs_mops {
     void (*mop_compact_space) (struct vnode *, char *, char *, size_t);
     void (*mop_postcreate_update) (struct vnode **);
     int (*mop_postcreate_unlock) (void);
+    int (*mop_postcreate_truncate) (struct vnode *, struct vnode *, struct componentname *, int);
     
     int (*mop_open_opt) (struct vnode *, int);
     void (*mop_close_update) (struct vnode *);
@@ -221,6 +222,9 @@ struct genfs_mops {
 
 #define MOP_POSTCREATE_UNLOCK() \
     (*VTOG(*vpp)->g_mop->mop_postcreate_unlock)()
+
+#define MOP_POSTCREATE_TRUNCATE(dvp, vp, cnp, oerror) \
+    (*VTOG(vp)->g_mop->mop_postcreate_truncate)((dvp), (vp), (cnp), (oerror))
 
 #define MOP_GET_NAME_MAX() \
     (*VTOG(dvp)->g_mop->mop_get_namemax)()

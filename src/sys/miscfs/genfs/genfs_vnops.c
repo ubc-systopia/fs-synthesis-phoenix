@@ -1632,6 +1632,7 @@ genfs_create(void *v)
         }
         //if ((*vpp)->v_type == VDIR)
         MOP_PARENTDIR_UPDATE(dvp);
+        error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
         uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
     }
 
