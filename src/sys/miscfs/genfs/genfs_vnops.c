@@ -1612,7 +1612,6 @@ genfs_create(void *v)
     }
     
     MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, filename, max_namesize);
-    panic("ext2fs after mop_set_dirent");
     if (MOP_HTREE_HAS_IDX(dvp)) {
         error = MOP_HTREE_ADD_ENTRY(dvp, dirbuf, cnp, newentrysize);
         kmem_free(dirbuf, dirsize);
@@ -1625,6 +1624,7 @@ genfs_create(void *v)
     else {
         //error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize);
         MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
+        panic("ext2fs after mop_set_dirent");
         MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             kmem_free(dirbuf, dirsize);
