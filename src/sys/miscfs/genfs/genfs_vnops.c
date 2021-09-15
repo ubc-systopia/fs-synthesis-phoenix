@@ -1612,7 +1612,7 @@ genfs_create(void *v)
     }
     
     MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, filename, max_namesize);
-    
+    panic("ext2fs after mop_set_dirent");
     if (MOP_HTREE_HAS_IDX(dvp)) {
         error = MOP_HTREE_ADD_ENTRY(dvp, dirbuf, cnp, newentrysize);
         kmem_free(dirbuf, dirsize);
