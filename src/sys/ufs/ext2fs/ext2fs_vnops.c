@@ -254,19 +254,20 @@ int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, d
     UFS_CHECK_CRAPCOUNTER(dvp);
     struct buf *bp;
     int error = 0;
-    struct inode *ip = VTOI(dvp);
-    struct m_ext2fs *fs = ip->i_e2fs;
-    daddr_t lbn = ext2_lblkno(fs, (off_t)ulr->ulr_offset);
+    //struct inode *ip = VTOI(dvp);
+    //struct m_ext2fs *fs = ip->i_e2fs;
+    //daddr_t lbn = ext2_lblkno(fs, (off_t)ulr->ulr_offset);
     
-    /*
-    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, (char **)buf, &bp)) != 0)
-        return error; */
+    
+    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, &bp)) != 0)
+        return error;
 
+    /*
     if ((error = bread(vp, lbn, fs->e2fs_bsize, 0, &bp)) != 0) {
         return error;
     }
     if (buf)
-        *buf = (char*)bp->b_data + ext2_blkoff(fs, (off_t)ulr->ulr_offset);
+        *buf = (char*)bp->b_data + ext2_blkoff(fs, (off_t)ulr->ulr_offset); */
     
     error = VOP_BWRITE(bp->b_vp, bp);
     
@@ -387,7 +388,7 @@ void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t
     ep = (struct ext2fs_direct *)buf;
     dsize = EXT2FS_DIRSIZ(ep->e2d_namlen);
     spacefree = fs2h16(ep->e2d_reclen) - dsize;
-    panic("ext2fs after mop_set_dirent");
+    //panic("ext2fs after mop_set_dirent");
     for (loc = fs2h16(ep->e2d_reclen); loc < ulr->ulr_count;) {
         nep = (struct ext2fs_direct *)(buf + loc);
         if (ep->e2d_ino) {
