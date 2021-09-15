@@ -465,13 +465,13 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
 
     error = ext2fs_add_entry(dvp, newdir, ulr, newentrysize);
-    
+    /*
     if (!error && ulr->ulr_endoff && ulr->ulr_endoff < MOP_NODE_SIZE(dvp))
         error = ext2fs_truncate(dvp, (off_t)ulr->ulr_endoff, IO_SYNC,
             cnp->cn_cred);
 
     if (error != 0)
-        return ext2fs_mop_create_on_error_routine(*vpp, error);
+        return ext2fs_mop_create_on_error_routine(*vpp, error); */
         
     return error;
     
