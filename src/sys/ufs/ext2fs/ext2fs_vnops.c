@@ -198,16 +198,16 @@ void ext2fs_mop_get_max_namesize(size_t *max_namesize)
     *max_namesize = EXT2FS_MAXNAMLEN;
 }
 
-void ext2fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize, const char* name, size_t namelen)
+void ext2fs_mop_set_dirent(struct vnode *vp, struct componentname *cnp, char *dirbuf, size_t *newentrysize, const char* name, size_t namelen)
 {
     struct ext2fs_direct newdir;
     ino_t ino = MOP_GET_INUMBER(vp);
-    //struct ufsmount *ump = VFSTOUFS(vp->v_mount);
-    int dirblksiz = MOP_GET_DIRBLKSIZE(vp);
+    struct ufsmount *ump = VFSTOUFS(vp->v_mount);
+    int dirblksiz = ump->um_dirblksiz;//MOP_GET_DIRBLKSIZE(vp);
 
     // Dealing with direntry
     newdir.e2d_ino = ino;
-    newdir.e2d_namlen = namelen;
+    newdir.e2d_namlen = cnp->cn_namelen;
     newdir.e2d_reclen = h2fs16(dirblksiz);
     
     /*
@@ -218,8 +218,8 @@ void ext2fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize,
     } */
     newdir.e2d_type = MOP_GET_DIRTYPE(vp);
     //panic("ext2fs after get dirblksize");
-    memcpy(newdir.e2d_name, name, (unsigned)namelen);
-    *newentrysize = EXT2FS_DIRSIZ(namelen);
+    memcpy(newdir.e2d_name, cnp->cn_nameptr, (unsigned)cnp->cn_namelen + 1);
+    *newentrysize = EXT2FS_DIRSIZ(cnp->cn_namelen);
 
     memcpy(dirbuf, &newdir, sizeof(struct ext2fs_direct));
 }
