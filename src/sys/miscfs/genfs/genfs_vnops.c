@@ -1550,6 +1550,7 @@ genfs_create(void *v)
     {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
+        kmem_free(buf, dirsize);
         return error;
     }
     
@@ -1561,6 +1562,7 @@ genfs_create(void *v)
     {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
+        kmem_free(buf, dirsize);
         return error;
     }
     
@@ -1569,6 +1571,7 @@ genfs_create(void *v)
     if ((error = MOP_LOOKUP_BY_NAME(dvp, *vpp, filename))) {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
+        kmem_free(buf, dirsize);
         return error;
     }
     
@@ -1577,6 +1580,7 @@ genfs_create(void *v)
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
+            kmem_free(buf, dirsize);
             return error;
         }
         MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, ".", strlen("."));
@@ -1590,6 +1594,7 @@ genfs_create(void *v)
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
+            kmem_free(buf, dirsize);
             return error;
         }
     }
@@ -1597,6 +1602,7 @@ genfs_create(void *v)
     if ((error = MOP_UPDATE_DISK(vpp))) {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
+        kmem_free(buf, dirsize);
         return error;
     }
     
@@ -1608,6 +1614,7 @@ genfs_create(void *v)
     if ((error = MOP_GET_BLK(dvp, *vpp, &buf, n, &blk, 0))) {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
+        kmem_free(buf, dirsize);
         return error;
     }
     
@@ -1616,6 +1623,7 @@ genfs_create(void *v)
         error = MOP_HTREE_ADD_ENTRY(dvp, dirbuf, cnp, newentrysize);
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
+        kmem_free(buf, dirsize);
         return error;
     }
     
@@ -1625,7 +1633,7 @@ genfs_create(void *v)
         error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename);
         //MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
         //MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
-        error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
+        //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
         /*
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             kmem_free(dirbuf, dirsize);
@@ -1649,6 +1657,7 @@ genfs_create(void *v)
     
     kmem_free(dirbuf, dirsize);
     kmem_free(filename, max_namesize + 1);
+    kmem_free(buf, dirsize);
     
     return error;
 }

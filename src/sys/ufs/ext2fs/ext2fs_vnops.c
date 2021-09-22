@@ -473,7 +473,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     if (error != 0)
         return ext2fs_mop_create_on_error_routine(*vpp, error); */
         
-    return error;
+    return MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
     
 }
 
