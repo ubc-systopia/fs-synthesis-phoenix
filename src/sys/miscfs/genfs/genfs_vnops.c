@@ -1583,9 +1583,9 @@ genfs_create(void *v)
             kmem_free(buf, dirsize);
             return error;
         }
-        MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, ".", strlen("."));
+        MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, ".", strlen("."));
         MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, 0);
-        MOP_SET_DIRENT(dvp, dirbuf, &newentrysize, "..", strlen(".."));
+        MOP_SET_DIRENT(dvp, cnp, dirbuf, &newentrysize, "..", strlen(".."));
         MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, 1);
         
         MOP_PARENTDIR_UPDATE(dvp);
