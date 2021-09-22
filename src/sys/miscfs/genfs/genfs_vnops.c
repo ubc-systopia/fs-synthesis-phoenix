@@ -1565,7 +1565,7 @@ genfs_create(void *v)
         kmem_free(buf, dirsize);
         return error;
     }
-    
+    /*
     MOP_FILENAME_TRUNCATE(filename, cnp);
     
     if ((error = MOP_LOOKUP_BY_NAME(dvp, *vpp, filename))) {
@@ -1573,9 +1573,9 @@ genfs_create(void *v)
         kmem_free(filename, max_namesize + 1);
         kmem_free(buf, dirsize);
         return error;
-    }
+    }(/
     
-    
+    /*
     if (MOP_ISDIR(*vpp)) {
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             kmem_free(dirbuf, dirsize);
@@ -1597,7 +1597,7 @@ genfs_create(void *v)
             kmem_free(buf, dirsize);
             return error;
         }
-    }
+    }*/
     
     if ((error = MOP_UPDATE_DISK(vpp))) {
         kmem_free(dirbuf, dirsize);
@@ -1605,7 +1605,7 @@ genfs_create(void *v)
         kmem_free(buf, dirsize);
         return error;
     }
-    
+    /*
     error = MOP_GROW_PARENTDIR(dvp, &newentrysize);
     
     int n = 0;
@@ -1616,7 +1616,7 @@ genfs_create(void *v)
         kmem_free(filename, max_namesize + 1);
         kmem_free(buf, dirsize);
         return error;
-    }
+    } */
     
     MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, max_namesize);
     if (MOP_HTREE_HAS_IDX(dvp)) {
