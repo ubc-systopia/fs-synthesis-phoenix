@@ -191,6 +191,7 @@ static const struct genfs_mops ext2fs_genfsmops = {
     .mop_compact_space = ext2fs_mop_compact_space,
     .mop_isdir = ext2fs_mop_create_isdir,
     //.mop_get_bufsize = ext2fs_mop_get_bufsize,
+    .mop_set_size = ext2fs_mop_set_size,
     .mop_grow_parentdir = genfs_grow_parentdir_null,
     .mop_create = ext2fs_mop_create,
     .mop_get_dirblksize = ext2fs_mop_get_dirblksize,

@@ -294,6 +294,7 @@ int ext2fs_mop_add_to_new_block(struct vnode *dvp, char *dirbuf, struct componen
     int error = 0;
     //struct ufsmount *ump = VFSTOUFS(dvp->v_mount); // reachable through dvp
     int dirblksiz = MOP_GET_DIRBLKSIZE(dvp); // reachable throug dvp
+    panic("ext2fs dirblksize");
     struct iovec aiov; // FS-independent
     struct uio auio; // FS-independent
     
