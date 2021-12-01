@@ -1533,8 +1533,8 @@ genfs_create(void *v)
     struct vattr *vap = a->a_vap;
     int unlock = 1;
     int error = 0;
-    //void *buf;
-    //daddr_t blk;
+    void *buf;
+    daddr_t blk;
     size_t dirsize = -1;
     size_t max_namesize = -1;
     MOP_GET_MAX_NAMESIZE(&max_namesize);
@@ -1565,7 +1565,7 @@ genfs_create(void *v)
         kmem_free(buf, dirsize);
         return error;
     }
-    /*
+    
     MOP_FILENAME_TRUNCATE(filename, cnp);
     
     if ((error = MOP_LOOKUP_BY_NAME(dvp, *vpp, filename))) {
@@ -1573,7 +1573,7 @@ genfs_create(void *v)
         kmem_free(filename, max_namesize + 1);
         kmem_free(buf, dirsize);
         return error;
-    } */
+    }
     
     
     if (MOP_ISDIR(*vpp)) {
