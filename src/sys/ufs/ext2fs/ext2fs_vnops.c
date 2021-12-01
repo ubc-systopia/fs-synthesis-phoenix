@@ -418,6 +418,8 @@ void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t
     
     memcpy(buf, ep, newentrysize);
     memcpy(dirbuf, entry, newentrysize);
+    //buf = (char *) ep;
+    //dirbuf = (char *) entry;
 }
 
 
