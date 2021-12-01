@@ -1533,7 +1533,7 @@ genfs_create(void *v)
     struct vattr *vap = a->a_vap;
     int unlock = 1;
     int error = 0;
-    void *buf;
+    //void *buf;
     daddr_t blk;
     size_t dirsize = -1;
     size_t max_namesize = -1;
