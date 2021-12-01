@@ -1575,7 +1575,7 @@ genfs_create(void *v)
         return error;
     } */
     
-    /*
+    
     if (MOP_ISDIR(*vpp)) {
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             kmem_free(dirbuf, dirsize);
@@ -1597,7 +1597,7 @@ genfs_create(void *v)
             kmem_free(buf, dirsize);
             return error;
         }
-    }*/
+    }
     
     if ((error = MOP_UPDATE_DISK(vpp))) {
         kmem_free(dirbuf, dirsize);
@@ -1605,7 +1605,7 @@ genfs_create(void *v)
         kmem_free(buf, dirsize);
         return error;
     }
-    /*
+    
     error = MOP_GROW_PARENTDIR(dvp, &newentrysize);
     
     int n = 0;
@@ -1616,7 +1616,7 @@ genfs_create(void *v)
         kmem_free(filename, max_namesize + 1);
         kmem_free(buf, dirsize);
         return error;
-    } */
+    }
     
     MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, max_namesize);
     if (MOP_HTREE_HAS_IDX(dvp)) {
@@ -1630,19 +1630,19 @@ genfs_create(void *v)
     if (MOP_BLOCK_HAS_SPACE(dvp))
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {
-        error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename);
-        //MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
-        //MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
-        //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
-        /*
+        //error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename);
+        MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
+        MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
+        error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
+        
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
             return error;
-        } */
-        //if ((*vpp)->v_type == VDIR)
-        //MOP_PARENTDIR_UPDATE(dvp);
-        //uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
+        }
+        if ((*vpp)->v_type == VDIR)
+        MOP_PARENTDIR_UPDATE(dvp);
+        uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
     }
 
     MOP_POSTCREATE_UPDATE(vpp);
