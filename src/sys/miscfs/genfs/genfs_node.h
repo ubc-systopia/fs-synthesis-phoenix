@@ -42,6 +42,7 @@ struct uio;
 struct vnode;
 struct componentname;
 struct vattr;
+struct buf;
 
 
 struct genfs_ops {
