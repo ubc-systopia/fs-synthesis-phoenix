@@ -248,19 +248,19 @@ int ext2fs_mop_htree_add_entry(struct vnode *dvp, char *dirbuf, struct component
 }
 
 
-int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir)
+int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir, struct buf **bpp)
 {
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
-    struct buf *bp;
-    int error = 0;
+    //struct buf *bp;
+    //int error = 0;
+    /*
+    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, bpp)) != 0)
+        return error; */
     
-    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, &bp)) != 0)
-        return error;
+    //error = VOP_BWRITE(bp->b_vp, bp);
     
-    error = VOP_BWRITE(bp->b_vp, bp);
-    
-    return error;
+    return ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, bpp);
 }
 
 int ext2fs_mop_set_size(struct vnode *vp, int dirblksiz)
@@ -462,10 +462,10 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     
     struct ext2fs_direct *ep, *nep;
     struct inode *dp;
-    struct buf *bp;
+    struct buf *bp = NULL;
     u_int dsize;
     int loc, spacefree;
-    char *buf;
+    char *buf = NULL;
 
     dp = VTOI(dvp);
     
@@ -486,20 +486,18 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     /*
      * Get the block containing the space for the new directory entry.
      */
+    
+    if((error = ext2fs_mop_get_blk(dvp, *vpp, &buf, 0, NULL, 0, &bp)) != 0)
+    {
+        return ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
+    }
+    /*
     if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, &buf, &bp)) != 0)
     {
         
         return ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
-        /*
-        if (!error && ulr->ulr_endoff && ulr->ulr_endoff < MOP_NODE_SIZE(dvp))
-            error = ext2fs_truncate(dvp, (off_t)ulr->ulr_endoff, IO_SYNC,
-                cnp->cn_cred);
-
-        if (error != 0)
-            return ext2fs_mop_create_on_error_routine(*vpp, error);
-        
-        return error; */
-    }
+    }*/
+     
     /*
      * Find space for the new entry. In the simple case, the entry at
      * offset base will have the space. If it does not, then namei
@@ -552,15 +550,6 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
     
     return ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
-    /*
-    if (!error && ulr->ulr_endoff && ulr->ulr_endoff < MOP_NODE_SIZE(dvp))
-        error = ext2fs_truncate(dvp, (off_t)ulr->ulr_endoff, IO_SYNC,
-            cnp->cn_cred);
-
-    if (error != 0)
-        return ext2fs_mop_create_on_error_routine(*vpp, error);
-        
-    return error;*/
     
 }
 
