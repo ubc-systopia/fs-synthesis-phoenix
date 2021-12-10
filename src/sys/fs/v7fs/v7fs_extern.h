@@ -112,7 +112,7 @@ void v7fs_mop_get_dirbuf_size(size_t *);
 void v7fs_mop_filename_truncate(char* filename, struct componentname *cnp);
 ino_t v7fs_mop_get_inumber(struct vnode *vp);
 void v7fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize, const char* name, size_t namelen);
-int v7fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **bpp, int n, daddr_t *blk, int isdir, struct buf **bpp);
+int v7fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir, struct buf **bpp);
 void v7fs_mop_add_direntry(char *buf, char* dirbuf, size_t dirsize, int n);
 int v7fs_mop_lookup_by_name(struct vnode *dvp, struct vnode *vp, char* filename);
 int v7fs_mop_dirent_writeback(struct vnode *vp, char* buf, daddr_t blk);
