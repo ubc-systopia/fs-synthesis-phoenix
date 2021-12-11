@@ -1639,7 +1639,7 @@ genfs_create(void *v)
             kmem_free(buf, dirsize);
             return error;
         }
-        MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, &buf);
+        MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
         //MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
         //MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
         //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);

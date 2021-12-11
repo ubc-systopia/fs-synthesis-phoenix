@@ -452,7 +452,7 @@ int ext2fs_postcreate_truncate(struct vnode *dvp, struct vnode *vp, struct compo
 }
 
 int
-ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize, char* filename, char **buf) {
+ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize, char* filename, char *buf) {
     int error = 0;
     struct ufs_lookup_results *ulr;
 
