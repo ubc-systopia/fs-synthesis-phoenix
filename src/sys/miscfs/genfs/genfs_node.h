@@ -78,7 +78,7 @@ struct genfs_mops {
     int (*mop_direnter) (struct vnode *, struct vnode **, struct componentname *, char *, size_t *);
     int (*mop_create_rootsize) (struct vnode *);
     int (*mop_get_newvnode) (struct vnode *, struct vnode **, struct vattr *, struct componentname *);
-    int (*mop_create) (struct vnode *, struct vnode **, struct componentname *, struct vattr *, char *, size_t, char *);
+    int (*mop_create) (struct vnode *, struct vnode **, struct componentname *, struct vattr *, char *, size_t, char *, char **);
     int (*mop_isdir) (struct vnode *);
     int (*mop_get_dirblksize) (struct vnode *);
     uint8_t (*mop_get_dirtype) (struct vnode *);
@@ -216,8 +216,8 @@ struct genfs_mops {
 
 
 
-#define MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename) \
-    (*VTOG(dvp)->g_mop->mop_create)((dvp), (vpp), (cnp), (vap), (dirbuf), (newentrysize), (filename))
+#define MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf) \
+    (*VTOG(dvp)->g_mop->mop_create)((dvp), (vpp), (cnp), (vap), (dirbuf), (newentrysize), (filename), (buf))
 #define MOP_POSTCREATE_UPDATE(vpp) \
     (*VTOG(*vpp)->g_mop->mop_postcreate_update)((vpp))
 

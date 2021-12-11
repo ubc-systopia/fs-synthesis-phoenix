@@ -1535,6 +1535,7 @@ genfs_create(void *v)
     int error = 0;
     //void *buf;
     //daddr_t blk;
+    struct buf *bp = NULL;
     size_t dirsize = -1;
     size_t max_namesize = -1;
     MOP_GET_MAX_NAMESIZE(&max_namesize);
@@ -1630,7 +1631,14 @@ genfs_create(void *v)
     if (MOP_BLOCK_HAS_SPACE(dvp))
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {
-        error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename);
+        if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0, &bp))) {
+            error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
+            kmem_free(dirbuf, dirsize);
+            kmem_free(filename, max_namesize + 1);
+            kmem_free(buf, dirsize);
+            return error;
+        }
+        MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, &buf);
         //MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
         //MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
         //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
@@ -1643,6 +1651,8 @@ genfs_create(void *v)
         //if ((*vpp)->v_type == VDIR)
         //MOP_PARENTDIR_UPDATE(dvp);
         //uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
+        error = VOP_BWRITE(bp->b_vp, bp);
+        error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
     }
 
     MOP_POSTCREATE_UPDATE(vpp);

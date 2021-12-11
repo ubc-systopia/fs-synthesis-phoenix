@@ -247,7 +247,7 @@ int v7fs_mop_grow_parentdir(struct vnode *dvp, size_t *dirsize)
 }
 
 
-int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize, char *filename)
+int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize, char *filename, char** buf)
 {
     int error = 0;
     struct v7fs_node *parent_node = dvp->v_data;
