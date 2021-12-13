@@ -1535,7 +1535,7 @@ genfs_create(void *v)
     int error = 0;
     //void *buf;
     //daddr_t blk;
-    struct buf *bp;
+    //struct buf *bp;
     size_t dirsize = -1;
     size_t max_namesize = -1;
     MOP_GET_MAX_NAMESIZE(&max_namesize);
