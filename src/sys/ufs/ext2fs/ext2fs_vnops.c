@@ -486,11 +486,11 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     /*
      * Get the block containing the space for the new directory entry.
      */
-    /*
-    if((error = ext2fs_mop_get_blk(dvp, *vpp, &buf, 0, NULL, 0, &bp)) != 0)
+    
+    if((error = ext2fs_mop_get_blk(dvp, *vpp, &buf, 0, NULL, 0)) != 0)
     {
-        return ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
-    }*/
+        return error;//ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
+    }
     /*
     if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, &buf, &bp)) != 0)
     {
@@ -549,7 +549,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     //error = VOP_BWRITE(bp->b_vp, bp);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
     
-    return error; //ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
+    return ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
     
 }
 
