@@ -253,14 +253,14 @@ int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, d
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
     struct buf *bp;
-    //int error = 0;
-    /*
+    int error = 0;
+    
     if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, bpp)) != 0)
-        return error; */
+        return error;
     
-    //error = VOP_BWRITE(bp->b_vp, bp);
+    error = VOP_BWRITE(bp->b_vp, bp);
     
-    return ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, &bp);
+    return error;
 }
 
 int ext2fs_mop_set_size(struct vnode *vp, int dirblksiz)
