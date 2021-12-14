@@ -418,6 +418,8 @@ void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t
     
     memcpy(buf, ep, newentrysize);
     memcpy(dirbuf, entry, newentrysize);
+    //buf = (char *) ep;
+    //dirbuf = (char *) entry;
 }
 
 
@@ -494,10 +496,9 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     /*
     if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, &buf, &bp)) != 0)
     {
-        
         return ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
     }*/
-     
+
     /*
      * Find space for the new entry. In the simple case, the entry at
      * offset base will have the space. If it does not, then namei
@@ -548,8 +549,8 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     memcpy(ep, newdir, (u_int)newentrysize);
     //error = VOP_BWRITE(bp->b_vp, bp);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
-    
-    return ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
+        
+    return error;//MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
     
 }
 
