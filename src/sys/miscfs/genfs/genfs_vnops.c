@@ -1653,7 +1653,7 @@ genfs_create(void *v)
         //MOP_PARENTDIR_UPDATE(dvp);
         //uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
         //error = VOP_BWRITE(bp->b_vp, bp);
-        //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
+        error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
     }
 
     MOP_POSTCREATE_UPDATE(vpp);
