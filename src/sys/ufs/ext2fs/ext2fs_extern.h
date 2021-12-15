@@ -208,13 +208,13 @@ int ext2fs_mop_block_has_space(struct vnode *);
 uint64_t ext2fs_mop_node_size(struct vnode *);
 int ext2fs_mop_create_on_error_routine(struct vnode *, int);
 void ext2fs_mop_add_direntry(char *buf, char* dirbuf, size_t dirsize, int n);
-int ext2fs_mop_get_blk(struct vnode *, struct vnode *, char **, int, daddr_t *, int, struct buf *);
+int ext2fs_mop_get_blk(struct vnode *, struct vnode *, char **, int, daddr_t *, int, struct buf **);
 void ext2fs_mop_parentdir_update(struct vnode *dvp);
 void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t);
 int ext2fs_mop_create_isdir(struct vnode *vp);
 int ext2fs_postcreate_truncate(struct vnode *dvp, struct vnode *vp, struct componentname *cnp, int oerror);
 
-int ext2fs_mop_create(struct vnode *, struct vnode**, struct componentname *, struct vattr *, char *, size_t, char *, char *, struct buf *);
+int ext2fs_mop_create(struct vnode *, struct vnode**, struct componentname *, struct vattr *, char *, size_t, char *, char *, struct buf **);
 int ext2fs_mop_open_opt(struct vnode *, int);
 void ext2fs_mop_close_update(struct vnode *);
 

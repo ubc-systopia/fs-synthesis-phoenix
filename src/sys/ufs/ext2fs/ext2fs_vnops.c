@@ -248,14 +248,14 @@ int ext2fs_mop_htree_add_entry(struct vnode *dvp, char *dirbuf, struct component
 }
 
 
-int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir, struct buf *bp)
+int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir, struct buf **bp)
 {
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
     //struct buf *bp;
     int error = 0;
     
-    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, &bp)) != 0)
+    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, bp)) != 0)
         return error;
     
     //error = VOP_BWRITE(bp->b_vp, bp);
@@ -454,7 +454,7 @@ int ext2fs_postcreate_truncate(struct vnode *dvp, struct vnode *vp, struct compo
 }
 
 int
-ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize, char* filename, char *cbuf, struct buf *bp) {
+ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize, char* filename, char *cbuf, struct buf **bp) {
     int error = 0;
     struct ufs_lookup_results *ulr;
 

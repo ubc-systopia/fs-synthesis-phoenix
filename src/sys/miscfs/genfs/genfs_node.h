@@ -78,7 +78,7 @@ struct genfs_mops {
     int (*mop_direnter) (struct vnode *, struct vnode **, struct componentname *, char *, size_t *);
     int (*mop_create_rootsize) (struct vnode *);
     int (*mop_get_newvnode) (struct vnode *, struct vnode **, struct vattr *, struct componentname *);
-    int (*mop_create) (struct vnode *, struct vnode **, struct componentname *, struct vattr *, char *, size_t, char *, char *, struct buf *);
+    int (*mop_create) (struct vnode *, struct vnode **, struct componentname *, struct vattr *, char *, size_t, char *, char *, struct buf **);
     int (*mop_isdir) (struct vnode *);
     int (*mop_get_dirblksize) (struct vnode *);
     uint8_t (*mop_get_dirtype) (struct vnode *);
