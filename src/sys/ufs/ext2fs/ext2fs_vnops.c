@@ -547,7 +547,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
         ep = (struct ext2fs_direct *)((char *)ep + dsize);
     }
     memcpy(ep, newdir, (u_int)newentrysize);
-    error = VOP_BWRITE((*bp)->b_vp, *bp);
+    //error = VOP_BWRITE((*bp)->b_vp, *bp);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
         
     return error;//MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
