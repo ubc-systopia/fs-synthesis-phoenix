@@ -248,19 +248,36 @@ int ext2fs_mop_htree_add_entry(struct vnode *dvp, char *dirbuf, struct component
 }
 
 
-int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir, struct buf **bp)
+int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir, struct buf **bpp)
 {
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
     //struct buf *bp;
-    int error = 0;
+    /*int error = 0;
     
     if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, bp)) != 0)
         return error;
     
-    //error = VOP_BWRITE(bp->b_vp, bp);
-    
-    return error;
+    return error; */
+    struct inode *ip;
+    struct m_ext2fs *fs;
+    struct buf *bp;
+    daddr_t lbn;
+    int error = 0;
+    off_t offset = (off_t)ulr->ulr_offset;
+
+    ip = VTOI(dvp);
+    fs = ip->i_e2fs;
+    lbn = ext2_lblkno(fs, offset);
+
+    *bpp = NULL;
+    if ((error = bread(vp, lbn, fs->e2fs_bsize, 0, &bp)) != 0) {
+        return error;
+    }
+    if (buf)
+        *buf = (char *)bp->b_data + ext2_blkoff(fs, offset);
+    *bpp = bp;
+    return 0;
 }
 
 int ext2fs_mop_set_size(struct vnode *vp, int dirblksiz)
