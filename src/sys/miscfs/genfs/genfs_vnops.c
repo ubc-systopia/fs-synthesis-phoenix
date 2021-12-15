@@ -1535,7 +1535,7 @@ genfs_create(void *v)
     int error = 0;
     //void *buf;
     //daddr_t blk;
-    struct buf *bp = NULL;
+    struct buf *bp;
     size_t dirsize = -1;
     size_t max_namesize = -1;
     MOP_GET_MAX_NAMESIZE(&max_namesize);
@@ -1638,6 +1638,7 @@ genfs_create(void *v)
             kmem_free(buf, dirsize);
             return error;
         }
+        panic("passing bp was okay");
         error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf, &bp);
         //MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
         //MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
