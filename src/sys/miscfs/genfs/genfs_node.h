@@ -66,7 +66,7 @@ struct genfs_mops {
     int (*mop_htree_add_entry) (struct vnode *, char *, struct componentname *, size_t);
     void (*mop_filename_truncate) (char *, struct componentname *);
     int (*mop_lookup_by_name) (struct vnode *, struct vnode *, char *);
-    int (*mop_get_blk) (struct vnode *, struct vnode *, char **, int, daddr_t *, int, struct buf **);
+    int (*mop_get_blk) (struct vnode *, struct vnode *, char **, int, daddr_t *, int);
     void (*mop_add_direntry) (char *, char *, size_t, int);
     int (*mop_dirent_writeback) (struct vnode *, char *, daddr_t);
     void (*mop_parentdir_update) (struct vnode *);
@@ -78,7 +78,7 @@ struct genfs_mops {
     int (*mop_direnter) (struct vnode *, struct vnode **, struct componentname *, char *, size_t *);
     int (*mop_create_rootsize) (struct vnode *);
     int (*mop_get_newvnode) (struct vnode *, struct vnode **, struct vattr *, struct componentname *);
-    int (*mop_create) (struct vnode *, struct vnode **, struct componentname *, struct vattr *, char *, size_t, char *, char *, struct buf **);
+    int (*mop_create) (struct vnode *, struct vnode **, struct componentname *, struct vattr *, char *, size_t, char *, char *);
     int (*mop_isdir) (struct vnode *);
     int (*mop_get_dirblksize) (struct vnode *);
     uint8_t (*mop_get_dirtype) (struct vnode *);
@@ -184,8 +184,8 @@ struct genfs_mops {
     (*VTOG(dvp)->g_mop->mop_filename_truncate)((filename), (cnp))
 #define MOP_LOOKUP_BY_NAME(dvp, vp, filename) \
     (*VTOG(dvp)->g_mop->mop_lookup_by_name)((dvp), (vp), (filename))
-#define MOP_GET_BLK(dvp, vp, buf, n, blk, isdir, bpp) \
-    (*VTOG(dvp)->g_mop->mop_get_blk)((dvp), (vp), (buf), (n), (blk), (isdir), (bpp))
+#define MOP_GET_BLK(dvp, vp, buf, n, blk, isdir) \
+    (*VTOG(dvp)->g_mop->mop_get_blk)((dvp), (vp), (buf), (n), (blk), (isdir))
 #define MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n) \
     (*VTOG(dvp)->g_mop->mop_add_direntry)((buf), (dirbuf), (dirsize), (n))
 #define MOP_DIRENT_WRITEBACK(vp, buf, blk) \
@@ -216,8 +216,8 @@ struct genfs_mops {
 
 
 
-#define MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf, bp) \
-    (*VTOG(dvp)->g_mop->mop_create)((dvp), (vpp), (cnp), (vap), (dirbuf), (newentrysize), (filename), (buf), (bp))
+#define MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf) \
+    (*VTOG(dvp)->g_mop->mop_create)((dvp), (vpp), (cnp), (vap), (dirbuf), (newentrysize), (filename), (buf))
 #define MOP_POSTCREATE_UPDATE(vpp) \
     (*VTOG(*vpp)->g_mop->mop_postcreate_update)((vpp))
 
