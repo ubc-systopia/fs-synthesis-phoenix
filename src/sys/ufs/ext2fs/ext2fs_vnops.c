@@ -462,10 +462,8 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     
     struct ext2fs_direct *ep, *nep;
     struct inode *dp;
-    //struct buf *bp = NULL;
     u_int dsize;
     int loc, spacefree;
-    //char *buf = NULL;
 
     dp = VTOI(dvp);
     
@@ -504,7 +502,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
      * ulr_offset + ulr_count would yield the
      * space.
      */
-    ep = (struct ext2fs_direct *)buf;
+    ep = (struct ext2fs_direct *) buf;
     dsize = EXT2FS_DIRSIZ(ep->e2d_namlen);
     spacefree = fs2h16(ep->e2d_reclen) - dsize;
     for (loc = fs2h16(ep->e2d_reclen); loc < ulr->ulr_count;) {
