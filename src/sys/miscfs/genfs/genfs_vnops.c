@@ -1538,12 +1538,13 @@ genfs_create(void *v)
     //struct buf *bp;
     size_t dirsize = -1;
     size_t max_namesize = -1;
+    int dirblksize = MOP_GET_DIRBLKSIZE(dvp);
     MOP_GET_MAX_NAMESIZE(&max_namesize);
     MOP_GET_DIRBUF_SIZE(&dirsize);
     size_t newentrysize = dirsize;
     char *dirbuf = (char *) kmem_zalloc(dirsize, KM_SLEEP);
     char *filename = (char *) kmem_zalloc(max_namesize + 1, KM_SLEEP);
-    char *buf = (char *) kmem_zalloc(dirsize, KM_SLEEP);
+    char *buf = (char *) kmem_zalloc(dirblksize, KM_SLEEP);
     
     
     // At this point needed for msdosfs, since its root directory cannot grow
@@ -1551,7 +1552,7 @@ genfs_create(void *v)
     {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
-        kmem_free(buf, dirsize);
+        kmem_free(buf, dirblksize);
         return error;
     }
     
@@ -1563,7 +1564,7 @@ genfs_create(void *v)
     {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
-        kmem_free(buf, dirsize);
+        kmem_free(buf, dirblksize);
         return error;
     }
     
@@ -1572,7 +1573,7 @@ genfs_create(void *v)
     if ((error = MOP_LOOKUP_BY_NAME(dvp, *vpp, filename))) {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
-        kmem_free(buf, dirsize);
+        kmem_free(buf, dirblksize);
         return error;
     }
     
@@ -1603,7 +1604,7 @@ genfs_create(void *v)
     if ((error = MOP_UPDATE_DISK(vpp))) {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
-        kmem_free(buf, dirsize);
+        kmem_free(buf, dirblksize);
         return error;
     }
     /*
@@ -1624,7 +1625,7 @@ genfs_create(void *v)
         error = MOP_HTREE_ADD_ENTRY(dvp, dirbuf, cnp, newentrysize);
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
-        kmem_free(buf, dirsize);
+        kmem_free(buf, dirblksize);
         return error;
     }
     
@@ -1634,7 +1635,7 @@ genfs_create(void *v)
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0))) {
             kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
-            kmem_free(buf, dirsize);
+            kmem_free(buf, dirblksize);
             return error;
         }
         panic("sigfault from buffer");
@@ -1667,7 +1668,7 @@ genfs_create(void *v)
     
     kmem_free(dirbuf, dirsize);
     kmem_free(filename, max_namesize + 1);
-    kmem_free(buf, dirsize);
+    kmem_free(buf, dirblksize);
     
     return error;
 }
