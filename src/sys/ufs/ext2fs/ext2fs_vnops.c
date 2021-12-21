@@ -454,7 +454,7 @@ int ext2fs_postcreate_truncate(struct vnode *dvp, struct vnode *vp, struct compo
 }
 
 int
-ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize, char* filename, char *buf) {
+ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize, char* filename, char *buf, struct buf** bpp) {
     int error = 0;
     struct ufs_lookup_results *ulr;
 
@@ -466,7 +466,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     struct inode *dp;
     u_int dsize;
     int loc, spacefree;
-    struct buf *bp;
+    //struct buf *bp;
 
     dp = VTOI(dvp);
     
@@ -488,7 +488,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
      * Get the block containing the space for the new directory entry.
      */
     
-    if((error = ext2fs_mop_get_blk(dvp, *vpp, &buf, 0, NULL, 0, &bp)) != 0)
+    if((error = ext2fs_mop_get_blk(dvp, *vpp, &buf, 0, NULL, 0, bpp)) != 0)
     {
         return error;//ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
     }
@@ -547,7 +547,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     }
     memcpy(ep, newdir, (u_int)newentrysize);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
-    error = VOP_BWRITE(bp->b_vp, bp);
+    error = VOP_BWRITE((*bpp)->b_vp, (*bp));
         
     return error;
     
