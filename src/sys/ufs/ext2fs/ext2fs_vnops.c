@@ -547,7 +547,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     }
     memcpy(ep, newdir, (u_int)newentrysize);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
-    error = VOP_BWRITE((*bpp)->b_vp, (*bpp));
+    //error = VOP_BWRITE((*bpp)->b_vp, (*bpp));
         
     return error;
     
