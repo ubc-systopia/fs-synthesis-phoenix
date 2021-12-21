@@ -1631,13 +1631,13 @@ genfs_create(void *v)
     
     if (MOP_BLOCK_HAS_SPACE(dvp))
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
-    else {
+    else {/*
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0))) {
             kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
             kmem_free(buf, dirblksize);
             return error;
-        }
+        }*/
         error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
         //MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
         //MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
