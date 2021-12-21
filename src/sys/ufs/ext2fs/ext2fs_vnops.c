@@ -248,18 +248,18 @@ int ext2fs_mop_htree_add_entry(struct vnode *dvp, char *dirbuf, struct component
 }
 
 
-int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir)
+int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir, struct buf** bpp)
 {
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
-    struct buf *bp;
+    //struct buf *bp;
     int error = 0;
     
     //panic("sigfault from buffer");
-    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, &bp)) != 0)
+    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, bpp)) != 0)
         return error;
     
-    VOP_BWRITE(bp->b_vp, bp);
+    //VOP_BWRITE(bp->b_vp, bp);
     return error;
 }
 
@@ -466,6 +466,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     struct inode *dp;
     u_int dsize;
     int loc, spacefree;
+    struct buf *bp;
 
     dp = VTOI(dvp);
     
@@ -487,7 +488,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
      * Get the block containing the space for the new directory entry.
      */
     
-    if((error = ext2fs_mop_get_blk(dvp, *vpp, &buf, 0, NULL, 0)) != 0)
+    if((error = ext2fs_mop_get_blk(dvp, *vpp, &buf, 0, NULL, 0, &bp)) != 0)
     {
         return error;//ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
     }
@@ -546,6 +547,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     }
     memcpy(ep, newdir, (u_int)newentrysize);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
+    error = VOP_BWRITE(bp->b_vp, bp);
         
     return error;
     
