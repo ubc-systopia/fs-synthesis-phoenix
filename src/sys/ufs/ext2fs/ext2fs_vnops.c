@@ -253,6 +253,8 @@ int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, d
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
     
+    panic("from inside the get_blk");
+    
     return ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, bpp);
 }
 
