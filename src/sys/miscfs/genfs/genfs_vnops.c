@@ -1639,6 +1639,7 @@ genfs_create(void *v)
             kmem_free(buf, dirblksize);
             return error;
         }
+        panic("sigfault not in get_blk");
         MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
         //MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
         //MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
