@@ -467,7 +467,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     struct inode *dp;
     u_int dsize;
     int loc, spacefree;
-    //struct buf *bp;
+    struct buf *bp;
 
     dp = VTOI(dvp);
     
@@ -488,11 +488,11 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     /*
      * Get the block containing the space for the new directory entry.
      */
-    /*
-    if((error = ext2fs_mop_get_blk(dvp, *vpp, &buf, 0, NULL, 0, bpp)) != 0)
+    
+    if((error = ext2fs_mop_get_blk(dvp, *vpp, &buf, 0, NULL, 0, &bp)) != 0)
     {
         return error;//ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
-    }*/
+    }
     /*
     if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, &buf, &bp)) != 0)
     {
