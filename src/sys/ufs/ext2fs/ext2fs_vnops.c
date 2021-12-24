@@ -467,7 +467,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     struct inode *dp;
     u_int dsize;
     int loc, spacefree;
-    struct buf *bp;
+    //struct buf *bp;
 
     dp = VTOI(dvp);
     
