@@ -1535,7 +1535,7 @@ genfs_create(void *v)
     int error = 0;
     //void *buf;
     //daddr_t blk;
-    struct buf *bp;
+    struct buf *bp = NULL;
     size_t dirsize = -1;
     size_t max_namesize = -1;
     //int dirblksize = MOP_GET_DIRBLKSIZE(dvp);
@@ -1633,27 +1633,31 @@ genfs_create(void *v)
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {
         
-        if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0, &bp)) == 0) {
-            MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
-            //MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
-            //MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
-            //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
-            /*
-            if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
-                kmem_free(dirbuf, dirsize);
-                kmem_free(filename, max_namesize + 1);
-                return error;
-            } */
-            //if ((*vpp)->v_type == VDIR)
-            //MOP_PARENTDIR_UPDATE(dvp);
-            //uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
-            error = VOP_BWRITE(bp->b_vp, bp);
-            error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
-            /*kmem_free(dirbuf, dirsize);
+        if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0, &bp))) {
+            kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
-            kmem_free(buf, dirblksize);
-            return error; */
+            kmem_free(buf, dirsize);
+            return error;
         }
+        MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
+        //MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
+        //MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
+        //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
+        /*
+        if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
+            kmem_free(dirbuf, dirsize);
+            kmem_free(filename, max_namesize + 1);
+            return error;
+        } */
+        //if ((*vpp)->v_type == VDIR)
+        //MOP_PARENTDIR_UPDATE(dvp);
+        //uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
+        error = VOP_BWRITE(bp->b_vp, bp);
+        error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
+        /*kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
+        kmem_free(buf, dirblksize);
+        return error; */
         //panic("sigfault not in get_blk");
     }
 
