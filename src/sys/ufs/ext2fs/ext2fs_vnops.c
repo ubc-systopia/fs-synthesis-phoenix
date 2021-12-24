@@ -489,7 +489,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
      * Get the block containing the space for the new directory entry.
      */
     
-    if((error = ext2fs_mop_get_blk(dvp, *vpp, &buf, 0, NULL, 0, &bp)) != 0)
+    if((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0)) != 0)
     {
         return error;//ext2fs_postcreate_truncate(dvp, *vpp, cnp, error);
     }
