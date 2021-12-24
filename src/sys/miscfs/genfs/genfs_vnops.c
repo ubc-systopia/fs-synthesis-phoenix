@@ -1535,7 +1535,7 @@ genfs_create(void *v)
     int error = 0;
     //void *buf;
     //daddr_t blk;
-    struct buf *bp = NULL;
+    //struct buf *bp = NULL;
     size_t dirsize = -1;
     size_t max_namesize = -1;
     //int dirblksize = MOP_GET_DIRBLKSIZE(dvp);
@@ -1633,7 +1633,7 @@ genfs_create(void *v)
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {
         
-        if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0, &bp))) {
+        if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0))) {
             kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
             kmem_free(buf, dirsize);
@@ -1652,7 +1652,7 @@ genfs_create(void *v)
         //if ((*vpp)->v_type == VDIR)
         //MOP_PARENTDIR_UPDATE(dvp);
         //uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
-        error = VOP_BWRITE(bp->b_vp, bp);
+        //error = VOP_BWRITE(bp->b_vp, bp);
         error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
         /*kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);

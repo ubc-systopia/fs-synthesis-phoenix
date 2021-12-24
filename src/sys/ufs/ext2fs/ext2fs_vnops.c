@@ -248,7 +248,7 @@ int ext2fs_mop_htree_add_entry(struct vnode *dvp, char *dirbuf, struct component
 }
 
 
-int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir, struct buf** bpp)
+int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir)
 {
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
@@ -258,7 +258,8 @@ int ext2fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, d
     if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, buf, &bp))) {
         return error;
     }
-    *bpp = bp;
+    //*bpp = bp;
+    error = VOP_BWRITE(bp->b_vp, bp);
     
     return error;
 }
