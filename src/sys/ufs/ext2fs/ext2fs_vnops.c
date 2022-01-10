@@ -463,10 +463,10 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
     
-    struct ext2fs_direct *ep, *nep;
-    struct inode *dp;
-    u_int dsize;
-    int loc, spacefree;
+    //struct ext2fs_direct *ep, *nep;
+    //struct inode *dp;
+    //u_int dsize;
+    //int loc, spacefree;
     //struct buf *bp;
 
     dp = VTOI(dvp);
@@ -474,9 +474,9 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
 
     error = ext2fs_add_entry(dvp, newdir, ulr, newentrysize);
-    
-    return error;
 
+        
+    return error;
     
 }
 
