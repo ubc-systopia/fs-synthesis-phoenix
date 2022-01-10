@@ -521,7 +521,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
         if (spacefree + dsize < newentrysize)
             panic("ext2fs_direnter: compact1");
 #endif
-        entry->e2d_reclen = h2fs16(spacefree + dsize);
+        newdir->e2d_reclen = h2fs16(spacefree + dsize);
     } else {
 #ifdef DIAGNOSTIC
         if (spacefree < newentrysize) {
@@ -530,11 +530,11 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
             panic("ext2fs_direnter: compact2");
         }
 #endif
-        entry->e2d_reclen = h2fs16(spacefree);
+        newdir->e2d_reclen = h2fs16(spacefree);
         ep->e2d_reclen = h2fs16(dsize);
         ep = (struct ext2fs_direct *)((char *)ep + dsize);
     }
-    memcpy(ep, entry, (u_int)newentrysize);
+    memcpy(ep, newdir, (u_int)newentrysize);
     error = VOP_BWRITE(bp->b_vp, bp);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
     return error;
