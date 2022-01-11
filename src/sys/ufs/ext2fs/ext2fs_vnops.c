@@ -466,7 +466,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
     struct ext2fs_direct *ep, *nep;
     struct inode *dp;
-    struct buf *bp;
+    //struct buf *bp;
     u_int dsize;
     int loc, spacefree;
     char *dirb;
@@ -485,7 +485,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     /*
      * Get the block containing the space for the new directory entry.
      */
-    if ((error = ext2fs_blkatoff(dvp, (off_t)ulr->ulr_offset, &dirb, &bp)) != 0)
+    if ((error = MOP_GET_BLK(dvp, *vpp, &dirb, 0, NULL, 0)) != 0)
         return error;
     /*
      * Find space for the new entry. In the simple case, the entry at
@@ -535,7 +535,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
         ep = (struct ext2fs_direct *)((char *)ep + dsize);
     }
     memcpy(ep, newdir, (u_int)newentrysize);
-    error = VOP_BWRITE(bp->b_vp, bp);
+    //error = VOP_BWRITE(bp->b_vp, bp);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
     return error;
     
