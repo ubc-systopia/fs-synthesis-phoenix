@@ -66,7 +66,7 @@ struct genfs_mops {
     int (*mop_htree_add_entry) (struct vnode *, char *, struct componentname *, size_t);
     void (*mop_filename_truncate) (char *, struct componentname *);
     int (*mop_lookup_by_name) (struct vnode *, struct vnode *, char *);
-    int (*mop_get_blk) (struct vnode *, struct vnode *, char **, int, daddr_t *, int, struct buf *);
+    int (*mop_get_blk) (struct vnode *, struct vnode *, char **, int, daddr_t *, int, struct buf **);
     void (*mop_add_direntry) (char *, char *, size_t, int);
     int (*mop_dirent_writeback) (struct vnode *, char *, daddr_t);
     void (*mop_parentdir_update) (struct vnode *);
