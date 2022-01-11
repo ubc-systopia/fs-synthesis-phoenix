@@ -354,18 +354,9 @@ void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t
     struct ext2fs_direct *ep, *nep;
     u_int dsize;
     int loc, spacefree;
-    struct ext2fs_direct *entry = (struct ext2fs_direct *) dirbuf;
+    struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
     struct ufs_lookup_results *ulr = &dvp->v_crap;
     UFS_CHECK_CRAPCOUNTER(dvp);
-    
-    /*
-     * If ulr_count is non-zero, then namei found space
-     * for the new entry in the range ulr_offset to
-     * ulr_offset + ulr_count in the directory.
-     * To use this space, we may have to compact the entries located
-     * there, by copying them together towards the beginning of the
-     * block, leaving the free space in one usable chunk at the end.
-     */
     
     /*
      * Find space for the new entry. In the simple case, the entry at
@@ -374,18 +365,17 @@ void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t
      * ulr_offset + ulr_count would yield the
      * space.
      */
-    
-    ep = (struct ext2fs_direct *)buf;
+    ep = (struct ext2fs_direct *) buf;
     dsize = EXT2FS_DIRSIZ(ep->e2d_namlen);
     spacefree = fs2h16(ep->e2d_reclen) - dsize;
     for (loc = fs2h16(ep->e2d_reclen); loc < ulr->ulr_count;) {
         nep = (struct ext2fs_direct *)(buf + loc);
         if (ep->e2d_ino) {
-            // trim the existing slot
+            /* trim the existing slot */
             ep->e2d_reclen = h2fs16(dsize);
             ep = (struct ext2fs_direct *)((char *)ep + dsize);
         } else {
-            // overwrite; nothing there; header is ours
+            /* overwrite; nothing there; header is ours */
             spacefree += dsize;
         }
         dsize = EXT2FS_DIRSIZ(nep->e2d_namlen);
@@ -397,13 +387,12 @@ void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t
      * Update the pointer fields in the previous entry (if any),
      * copy in the new entry, and write out the block.
      */
-    
     if (ep->e2d_ino == 0) {
 #ifdef DIAGNOSTIC
         if (spacefree + dsize < newentrysize)
             panic("ext2fs_direnter: compact1");
 #endif
-        entry->e2d_reclen = h2fs16(spacefree + dsize);
+        newdir->e2d_reclen = h2fs16(spacefree + dsize);
     } else {
 #ifdef DIAGNOSTIC
         if (spacefree < newentrysize) {
@@ -412,15 +401,11 @@ void ext2fs_mop_compact_space(struct vnode *dvp, char* buf, char* dirbuf, size_t
             panic("ext2fs_direnter: compact2");
         }
 #endif
-        entry->e2d_reclen = h2fs16(spacefree);
+        newdir->e2d_reclen = h2fs16(spacefree);
         ep->e2d_reclen = h2fs16(dsize);
         ep = (struct ext2fs_direct *)((char *)ep + dsize);
     }
-    
-    memcpy(buf, ep, newentrysize);
-    memcpy(dirbuf, entry, newentrysize);
-    //buf = (char *) ep;
-    //dirbuf = (char *) entry;
+    memcpy(ep, newdir, (u_int)newentrysize);
 }
 
 
@@ -464,14 +449,9 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     UFS_CHECK_CRAPCOUNTER(dvp);
 
     struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
-    struct ext2fs_direct *ep, *nep;
-    struct inode *dp;
+    struct inode *dp = VTOI(dvp);
     struct buf *bp;
-    u_int dsize;
-    int loc, spacefree;
     char *dirb;
-
-    dp = VTOI(dvp);
 
     /*
      * If ulr_count is non-zero, then namei found space
@@ -487,54 +467,8 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
      */
     if ((error = MOP_GET_BLK(dvp, *vpp, &dirb, 0, NULL, 0, &bp)) != 0)
         return error;
-    /*
-     * Find space for the new entry. In the simple case, the entry at
-     * offset base will have the space. If it does not, then namei
-     * arranged that compacting the region ulr_offset to
-     * ulr_offset + ulr_count would yield the
-     * space.
-     */
-    ep = (struct ext2fs_direct *)dirb;
-    dsize = EXT2FS_DIRSIZ(ep->e2d_namlen);
-    spacefree = fs2h16(ep->e2d_reclen) - dsize;
-    for (loc = fs2h16(ep->e2d_reclen); loc < ulr->ulr_count;) {
-        nep = (struct ext2fs_direct *)(dirb + loc);
-        if (ep->e2d_ino) {
-            /* trim the existing slot */
-            ep->e2d_reclen = h2fs16(dsize);
-            ep = (struct ext2fs_direct *)((char *)ep + dsize);
-        } else {
-            /* overwrite; nothing there; header is ours */
-            spacefree += dsize;
-        }
-        dsize = EXT2FS_DIRSIZ(nep->e2d_namlen);
-        spacefree += fs2h16(nep->e2d_reclen) - dsize;
-        loc += fs2h16(nep->e2d_reclen);
-        memcpy((void *)ep, (void *)nep, dsize);
-    }
-    /*
-     * Update the pointer fields in the previous entry (if any),
-     * copy in the new entry, and write out the block.
-     */
-    if (ep->e2d_ino == 0) {
-#ifdef DIAGNOSTIC
-        if (spacefree + dsize < newentrysize)
-            panic("ext2fs_direnter: compact1");
-#endif
-        newdir->e2d_reclen = h2fs16(spacefree + dsize);
-    } else {
-#ifdef DIAGNOSTIC
-        if (spacefree < newentrysize) {
-            printf("ext2fs_direnter: compact2 %u %u",
-                (u_int)spacefree, (u_int)newentrysize);
-            panic("ext2fs_direnter: compact2");
-        }
-#endif
-        newdir->e2d_reclen = h2fs16(spacefree);
-        ep->e2d_reclen = h2fs16(dsize);
-        ep = (struct ext2fs_direct *)((char *)ep + dsize);
-    }
-    memcpy(ep, newdir, (u_int)newentrysize);
+    
+    MOP_COMPACT_SPACE(dvp, dirb, dirbuf, newentrysize);
     error = VOP_BWRITE(bp->b_vp, bp);
     dp->i_flag |= IN_CHANGE | IN_UPDATE;
     return error;
