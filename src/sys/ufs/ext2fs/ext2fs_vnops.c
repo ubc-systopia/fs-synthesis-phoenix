@@ -466,7 +466,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
     struct ext2fs_direct *ep, *nep;
     struct inode *dp;
-    struct buf *bp;
+    struct buf *bp = NULL;
     u_int dsize;
     int loc, spacefree;
     char *dirb;
