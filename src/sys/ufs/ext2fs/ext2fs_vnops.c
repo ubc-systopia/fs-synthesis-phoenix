@@ -461,11 +461,11 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
      */
     if ((error = MOP_GET_BLK(dvp, *vpp, &dirb, 0, NULL, 0, &bp)) != 0)
         return error;
-    
-    error = VOP_BWRITE(bp->b_vp, bp);
+
     MOP_COMPACT_SPACE(dvp, dirb, dirbuf, newentrysize);
-    
-    dp->i_flag |= IN_CHANGE | IN_UPDATE;
+    error = VOP_BWRITE(bp->b_vp, bp);
+    MOP_PARENTDIR_UPDATE(dvp);
+    //dp->i_flag |= IN_CHANGE | IN_UPDATE;
     return error;
     
 }
