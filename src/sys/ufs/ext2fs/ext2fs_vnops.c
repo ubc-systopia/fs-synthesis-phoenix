@@ -464,7 +464,6 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
 
     MOP_COMPACT_SPACE(dvp, dirb, dirbuf, newentrysize);
     error = VOP_BWRITE(bp->b_vp, bp);
-    MOP_PARENTDIR_UPDATE(dvp);
     //dp->i_flag |= IN_CHANGE | IN_UPDATE;
     return error;
     

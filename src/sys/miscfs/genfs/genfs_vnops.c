@@ -1649,16 +1649,9 @@ genfs_create(void *v)
             kmem_free(filename, max_namesize + 1);
             return error;
         } */
-        //if ((*vpp)->v_type == VDIR)
-        //MOP_PARENTDIR_UPDATE(dvp);
-        //uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
+        MOP_PARENTDIR_UPDATE(dvp);
         //error = VOP_BWRITE(bp->b_vp, bp);
         error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
-        /*kmem_free(dirbuf, dirsize);
-        kmem_free(filename, max_namesize + 1);
-        kmem_free(buf, dirblksize);
-        return error; */
-        //panic("sigfault not in get_blk");
     }
 
     MOP_POSTCREATE_UPDATE(vpp);
