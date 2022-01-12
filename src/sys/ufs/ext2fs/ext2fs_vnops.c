@@ -445,7 +445,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     //struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
     //struct inode *dp = VTOI(dvp);
     struct buf *bp;
-    //char *dirb;
+    char *dirb;
 
     /*
      * If ulr_count is non-zero, then namei found space
@@ -459,11 +459,13 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     /*
      * Get the block containing the space for the new directory entry.
      */
-    if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0, &bp)) != 0)
+    if ((error = MOP_GET_BLK(dvp, *vpp, &dirb, 0, NULL, 0, &bp)) != 0)
         return error;
 
-    MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
+    MOP_COMPACT_SPACE(dvp, dirb, dirbuf, newentrysize);
     error = VOP_BWRITE(bp->b_vp, bp);
+    MOP_PARENTDIR_UPDATE(dvp);
+    //dp->i_flag |= IN_CHANGE | IN_UPDATE;
     return error;
     
 }
