@@ -443,7 +443,7 @@ int
 ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize, char* filename, char *buf) {
     int error = 0;
     //struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
-    struct inode *dp = VTOI(dvp);
+    //struct inode *dp = VTOI(dvp);
     struct buf *bp;
     char *dirb;
 
