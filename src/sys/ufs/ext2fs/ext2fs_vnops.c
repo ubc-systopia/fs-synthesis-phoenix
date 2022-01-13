@@ -442,21 +442,12 @@ int ext2fs_postcreate_truncate(struct vnode *dvp, struct vnode *vp, struct compo
 int
 ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize, char* filename, char *buf) {
     int error = 0;
-    struct ufs_lookup_results *ulr;
-
-    /* XXX should handle this material another way */
-    ulr = &dvp->v_crap;
-    UFS_CHECK_CRAPCOUNTER(dvp);
 
     struct ext2fs_direct *newdir = (struct ext2fs_direct *) dirbuf;
-    struct ext2fs_direct *ep, *nep;
-    struct inode *dp;
+
     struct buf *bp;
-    u_int dsize;
-    int loc, spacefree;
     char *dirb;
 
-    dp = VTOI(dvp);
 
     /*
      * If ulr_count is non-zero, then namei found space
