@@ -443,7 +443,6 @@ int
 ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize, char* filename, char *buf) {
     int error = 0;
     struct buf *bp;
-    char *dirb;
 
 
     /*
@@ -458,12 +457,11 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
     /*
      * Get the block containing the space for the new directory entry.
      */
-    if ((error = MOP_GET_BLK(dvp, *vpp, &dirb, 0, NULL, 0, &bp)) != 0)
+    if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0, &bp)) != 0)
         return error;
     
-    MOP_COMPACT_SPACE(dvp, dirb, dirbuf, newentrysize);
-    error = VOP_BWRITE(bp->b_vp, bp);
-    //dp->i_flag |= IN_CHANGE | IN_UPDATE;
+    MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
+    //error = VOP_BWRITE(bp->b_vp, bp);
     return error;
     
 }

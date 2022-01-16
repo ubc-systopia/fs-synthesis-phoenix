@@ -1632,25 +1632,8 @@ genfs_create(void *v)
     if (MOP_BLOCK_HAS_SPACE(dvp))
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {
-        
-        if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, NULL, 0, &bp)) == 0) {
-            MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
-            error = VOP_BWRITE(bp->b_vp, bp);
-            MOP_PARENTDIR_UPDATE(dvp);
-            error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
-        } else
-            error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
-        //error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
-        //MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
-        //MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
-        //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
-        /*
-        if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
-            kmem_free(dirbuf, dirsize);
-            kmem_free(filename, max_namesize + 1);
-            return error;
-        } */
-        
+        error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
+        error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
     }
 
     MOP_POSTCREATE_UPDATE(vpp);
