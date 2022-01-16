@@ -114,7 +114,7 @@ ino_t v7fs_mop_get_inumber(struct vnode *vp)
 }
 
 
-void v7fs_mop_set_dirent(struct vnode *vp, char *dirbuf, size_t *newentrysize, const char* name, size_t namelen)
+void v7fs_mop_set_dirent(struct vnode *vp, struct componentname *cnp, char *dirbuf, size_t *newentrysize, const char* name, size_t namelen)
 {
     struct v7fs_dirent newdir;
     ino_t ino_temp = MOP_GET_INUMBER(vp);
