@@ -461,7 +461,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
         return error;
     
     MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
-    //error = VOP_BWRITE(bp->b_vp, bp);
+    error = VOP_BWRITE(bp->b_vp, bp);
     return error;
     
 }
