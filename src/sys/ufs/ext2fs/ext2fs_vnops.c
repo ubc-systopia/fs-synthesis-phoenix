@@ -1417,7 +1417,7 @@ int (**ext2fs_vnodeop_p)(void *);
 const struct vnodeopv_entry_desc ext2fs_vnodeop_entries[] = {
 	{ &vop_default_desc, vn_default_error },
 	{ &vop_lookup_desc, ext2fs_lookup },		/* lookup */
-	{ &vop_create_desc, genfs_create },		/* create */
+	{ &vop_create_desc, ext2fs_create },		/* create */
 	{ &vop_mknod_desc, ext2fs_mknod },		/* mknod */
 	{ &vop_open_desc, genfs_open },		/* open */
 	{ &vop_close_desc, genfs_close },			/* close */

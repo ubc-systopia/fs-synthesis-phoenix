@@ -155,7 +155,7 @@ void v7fs_mop_get_bufsize(size_t *buf_size)
 {
     *buf_size = V7FS_BSIZE;
 }
-/*
+
 int v7fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, daddr_t *blk, int isdir, struct buf **bpp)
 {
     struct v7fs_node *v7node = vp->v_data;
@@ -186,7 +186,7 @@ int v7fs_mop_get_blk(struct vnode *dvp, struct vnode *vp, char **buf, int n, dad
     *blk = v7blk;
     
     return 0;
-}*/
+}
 
 int v7fs_mop_lookup_by_name(struct vnode *dvp, struct vnode *vp, char* filename)
 {

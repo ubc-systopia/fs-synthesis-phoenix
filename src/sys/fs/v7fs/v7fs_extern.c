@@ -56,7 +56,7 @@ int (**v7fs_vnodeop_p)(void *);	/* filled by getnewvnode (vnode.h) */
 const struct vnodeopv_entry_desc v7fs_vnodeop_entries[] = {
 	{ &vop_default_desc, vn_default_error },
 	{ &vop_lookup_desc, v7fs_lookup },		/* lookup */
-	{ &vop_create_desc, v7fs_create },		/* create */
+	{ &vop_create_desc, genfs_create },		/* create */
 	{ &vop_mknod_desc, v7fs_mknod },		/* mknod */
 	{ &vop_open_desc, genfs_open },			/* open */
 	{ &vop_close_desc, genfs_close },		/* close */
@@ -257,10 +257,10 @@ const struct genfs_mops v7fs_genfsmops = {
     .mop_get_dirent_pos = v7fs_mop_get_dirent_pos,
     .mop_update_disk = genfs_update_disk_null,
     .mop_get_inumber = v7fs_mop_get_inumber,
-    //.mop_set_dirent = v7fs_mop_set_dirent,
+    .mop_set_dirent = v7fs_mop_set_dirent,
     .mop_filename_truncate = v7fs_mop_filename_truncate,
     .mop_lookup_by_name = v7fs_mop_lookup_by_name,
-    //.mop_get_blk = v7fs_mop_get_blk,
+    .mop_get_blk = v7fs_mop_get_blk,
     .mop_add_direntry = v7fs_mop_add_direntry,
     .mop_dirent_writeback = v7fs_mop_dirent_writeback,
     .mop_compact_space = genfs_compactspace_null,
