@@ -442,7 +442,7 @@ int ext2fs_postcreate_truncate(struct vnode *dvp, struct vnode *vp, struct compo
 int
 ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char* dirbuf, size_t newentrysize, char* filename, char *buf) {
     int error = 0;
-    struct buf *bp;
+    //struct buf *bp;
 
 
     /*
@@ -461,7 +461,7 @@ ext2fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* c
       //  return error;
     
     MOP_COMPACT_SPACE(dvp, buf, dirbuf, newentrysize);
-    error = VOP_BWRITE(bp->b_vp, bp);
+    //error = VOP_BWRITE(bp->b_vp, bp);
     return error;
     
 }
