@@ -253,13 +253,13 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     struct v7fs_node *parent_node = dvp->v_data;
     struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
     struct v7fs_self *fs = v7fsmount->core;
-    //char filename[V7FS_NAME_MAX + 1];
+    char filename[V7FS_NAME_MAX + 1];
     struct v7fs_inode *parent_dir = &parent_node->inode;
-    //struct v7fs_node *new_node = (*vpp)->v_data;
-    //struct v7fs_inode inode = new_node->inode;
-    //daddr_t blk;
+    struct v7fs_node *new_node = (*vpp)->v_data;
+    struct v7fs_inode inode = new_node->inode;
+    daddr_t blk;
     
-    //MOP_FILENAME_TRUNCATE(filename, cnp);
+    MOP_FILENAME_TRUNCATE(filename, cnp);
 
     size_t dirsize = -1;
     MOP_GET_DIRBUF_SIZE(&dirsize);
@@ -267,11 +267,11 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
 
     //void *buf;
 
-    /*
+    
     if ((error = MOP_LOOKUP_BY_NAME(dvp, *vpp, filename))) {
         return error;
-    } */
-    /*
+    }
+    
     if (v7fs_inode_isdir(&inode)) {
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             return error;
@@ -287,7 +287,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             return error;
         }
-    } */
+    }
     
     // Expand datablock.
     if ((error = v7fs_datablock_expand(fs, parent_dir, dirsize)))
@@ -296,7 +296,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     
    // void *buf;
     
-    /*
+    
     size_t sz = MOP_GET_FILESIZE(dvp);
     sz = V7FS_RESIDUE_BSIZE(sz);    // last block payload.
     int n = sz / dirsize - 1;
@@ -317,10 +317,10 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
         v7fs_inode_writeback(fs, parent_dir);
     }
 
-    //DPRINTF("done. (dirent size=%dbyte)\n", parent_dir->filesize);
+    DPRINTF("done. (dirent size=%dbyte)\n", parent_dir->filesize);
     
     // Sync dirent size change.
-    uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));*/
+    uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));
 
     return error;
     
