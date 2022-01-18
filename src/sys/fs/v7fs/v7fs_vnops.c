@@ -276,9 +276,9 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             return error;
         }
-        MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, ".", strlen("."));
+        MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, ".", strlen("."));
         MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, 0);
-        MOP_SET_DIRENT(dvp, dirbuf, &newentrysize, "..", strlen(".."));
+        MOP_SET_DIRENT(dvp, cnp, dirbuf, &newentrysize, "..", strlen(".."));
         MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, 1);
         
         MOP_PARENTDIR_UPDATE(dvp);
@@ -305,7 +305,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
         return error;
     }
 
-    MOP_SET_DIRENT(*vpp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX);
+    MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX);
     MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
     if (!fs->io.write(fs->io.cookie, buf, blk))
         error = EIO;
