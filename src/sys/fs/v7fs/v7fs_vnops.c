@@ -272,7 +272,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
         return error;
     }
     
-    if (v7fs_inode_isdir(&inode)) {
+    if (MOP_ISDIR(*vpp)) {
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             return error;
         }
@@ -312,7 +312,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     scratch_free(fs, buf);
 
 
-    if (v7fs_inode_isdir(&inode)) {
+    if (MOP_ISDIR(*vpp)) {
         parent_dir->nlink++;
         v7fs_inode_writeback(fs, parent_dir);
     }
