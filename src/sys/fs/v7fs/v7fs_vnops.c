@@ -270,7 +270,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     /*
     if ((error = MOP_LOOKUP_BY_NAME(dvp, *vpp, filename))) {
         return error;
-    }*/
+    }
     
     if (MOP_ISDIR(*vpp)) {
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
@@ -287,7 +287,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             return error;
         }
-    }
+    }*/
     
     // Expand datablock.
     if ((error = v7fs_datablock_expand(fs, parent_dir, dirsize)))

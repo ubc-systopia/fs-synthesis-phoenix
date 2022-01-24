@@ -1576,7 +1576,7 @@ genfs_create(void *v)
         return error;
     }
     
-    /*
+    
     if (MOP_ISDIR(*vpp)) {
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             kmem_free(dirbuf, dirsize);
@@ -1606,7 +1606,7 @@ genfs_create(void *v)
         kmem_free(buf, dirsize);
         return error;
     }
-    
+    /*
     error = MOP_GROW_PARENTDIR(dvp, &newentrysize);
     
     int n = 0;
