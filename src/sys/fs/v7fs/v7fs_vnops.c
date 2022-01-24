@@ -259,7 +259,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     //struct v7fs_inode inode = new_node->inode;
     daddr_t blk;
     
-    MOP_FILENAME_TRUNCATE(filename, cnp);
+    //MOP_FILENAME_TRUNCATE(filename, cnp);
 
     size_t dirsize = -1;
     MOP_GET_DIRBUF_SIZE(&dirsize);
@@ -267,10 +267,10 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
 
     //void *buf;
 
-    
+    /*
     if ((error = MOP_LOOKUP_BY_NAME(dvp, *vpp, filename))) {
         return error;
-    }
+    }*/
     
     if (MOP_ISDIR(*vpp)) {
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {

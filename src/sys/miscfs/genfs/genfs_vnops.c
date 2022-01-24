@@ -1566,7 +1566,7 @@ genfs_create(void *v)
         kmem_free(buf, dirsize);
         return error;
     }
-    /*
+    
     MOP_FILENAME_TRUNCATE(filename, cnp);
     
     if ((error = MOP_LOOKUP_BY_NAME(dvp, *vpp, filename))) {
@@ -1576,7 +1576,7 @@ genfs_create(void *v)
         return error;
     }
     
-    
+    /*
     if (MOP_ISDIR(*vpp)) {
         if ((error = MOP_GET_BLK(dvp, *vpp, &buf, 0, &blk, 1))) {
             kmem_free(dirbuf, dirsize);
