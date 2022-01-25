@@ -290,8 +290,8 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     }*/
     
     // Expand datablock.
-    if ((error = v7fs_datablock_expand(fs, parent_dir, dirsize)))
-        return error;
+    //if ((error = v7fs_datablock_expand(fs, parent_dir, dirsize)))
+      //  return error;
 
     
    // void *buf;
