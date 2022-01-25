@@ -1631,6 +1631,7 @@ genfs_create(void *v)
     if (MOP_BLOCK_HAS_SPACE(dvp))
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {*/
+        MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
         error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
         //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
         /*MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);

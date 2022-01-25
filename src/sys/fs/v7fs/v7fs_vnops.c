@@ -306,7 +306,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     }
 
     MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX); */
-    MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
+    //MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
     if (!fs->io.write(fs->io.cookie, buf, blk))
         error = EIO;
     scratch_free(fs, buf);
