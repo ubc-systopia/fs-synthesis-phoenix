@@ -1632,7 +1632,13 @@ genfs_create(void *v)
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {*/
         MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
-        error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
+        
+    if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
+        kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
+        return error;
+    }
+    MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
         //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
         /*MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {

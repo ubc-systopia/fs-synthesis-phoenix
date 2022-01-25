@@ -257,12 +257,12 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     struct v7fs_inode *parent_dir = &parent_node->inode;
     //struct v7fs_node *new_node = (*vpp)->v_data;
     //struct v7fs_inode inode = new_node->inode;
-    daddr_t blk;
+    //daddr_t blk;
     
     //MOP_FILENAME_TRUNCATE(filename, cnp);
 
-    size_t dirsize = -1;
-    MOP_GET_DIRBUF_SIZE(&dirsize);
+    //size_t dirsize = -1;
+    //MOP_GET_DIRBUF_SIZE(&dirsize);
     
 
     //void *buf;
@@ -307,9 +307,9 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
 
     MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX); */
     //MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
-    if (!fs->io.write(fs->io.cookie, buf, blk))
+    /*if (!fs->io.write(fs->io.cookie, buf, blk))
         error = EIO;
-    scratch_free(fs, buf);
+    scratch_free(fs, buf); */
 
 
     if (MOP_ISDIR(*vpp)) {
