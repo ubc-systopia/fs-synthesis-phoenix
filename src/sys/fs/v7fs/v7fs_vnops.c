@@ -296,7 +296,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     
    // void *buf;
     
-    
+    /*
     size_t sz = MOP_GET_FILESIZE(dvp);
     sz = V7FS_RESIDUE_BSIZE(sz);    // last block payload.
     int n = sz / dirsize - 1;
@@ -305,7 +305,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
         return error;
     }
 
-    MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX);
+    MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX); */
     MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
     if (!fs->io.write(fs->io.cookie, buf, blk))
         error = EIO;

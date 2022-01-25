@@ -1608,7 +1608,7 @@ genfs_create(void *v)
     }
     
     error = MOP_GROW_PARENTDIR(dvp, &dirsize);
-    /*
+    
     int n = 0;
     MOP_GET_DIRENT_POS(dvp, &n, newentrysize);
     
@@ -1626,7 +1626,7 @@ genfs_create(void *v)
         kmem_free(filename, max_namesize + 1);
         kmem_free(buf, dirsize);
         return error;
-    }*/
+    }
     /*
     if (MOP_BLOCK_HAS_SPACE(dvp))
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
