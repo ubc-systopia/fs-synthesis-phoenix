@@ -1614,7 +1614,7 @@ genfs_create(void *v)
         return error;
     }
         
-    
+    panic("sigfault in grow_parent");
     int n = 0;
     MOP_GET_DIRENT_POS(dvp, &n, newentrysize);
     
@@ -1633,10 +1633,10 @@ genfs_create(void *v)
         kmem_free(buf, dirsize);
         return error;
     }
-    /*
+    
     if (MOP_BLOCK_HAS_SPACE(dvp))
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
-    else {*/
+    else {
         MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
         
     if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
@@ -1644,7 +1644,13 @@ genfs_create(void *v)
         kmem_free(filename, max_namesize + 1);
         return error;
     }
-    MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
+    
+    if (MOP_ISDIR(*vpp))
+        MOP_PARENTDIR_UPDATE(dvp);
+    
+    uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
+}
+    //MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
         //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
         /*MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
