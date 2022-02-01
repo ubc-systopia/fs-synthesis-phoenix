@@ -1607,7 +1607,13 @@ genfs_create(void *v)
         return error;
     }
     
-    error = MOP_GROW_PARENTDIR(dvp, &dirsize);
+    if ((error = MOP_GROW_PARENTDIR(dvp, &dirsize))) {
+        kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
+        kmem_free(buf, dirsize);
+        return error;
+    }
+        
     
     int n = 0;
     MOP_GET_DIRENT_POS(dvp, &n, newentrysize);
