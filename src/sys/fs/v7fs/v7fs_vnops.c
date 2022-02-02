@@ -311,7 +311,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
         error = EIO;
     scratch_free(fs, buf); */
 
-
+    
     if (MOP_ISDIR(*vpp)) {
         parent_dir->nlink++;
         v7fs_inode_writeback(fs, parent_dir);

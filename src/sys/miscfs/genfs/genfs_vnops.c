@@ -1591,13 +1591,14 @@ genfs_create(void *v)
         
         MOP_PARENTDIR_UPDATE(dvp);
 
-        
+        error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk);
+        /*
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
             kmem_free(buf, dirsize);
             return error;
-        }
+        } */
     }
     
     if ((error = MOP_UPDATE_DISK(vpp))) {
@@ -1639,12 +1640,13 @@ genfs_create(void *v)
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {
         MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
-        
+        error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk);
+    /*
     if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
         return error;
-    }
+    } */
     
     if (MOP_ISDIR(*vpp))
         MOP_PARENTDIR_UPDATE(dvp);
@@ -1652,18 +1654,6 @@ genfs_create(void *v)
     uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
 }
     //MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
-        //error = MOP_POSTCREATE_TRUNCATE(dvp, *vpp, cnp, error);
-        /*MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
-        if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
-            kmem_free(dirbuf, dirsize);
-            kmem_free(filename, max_namesize + 1);
-            return error;
-        }
-        if (MOP_ISDIR(*vpp))
-            MOP_PARENTDIR_UPDATE(dvp);
-        uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
-        
-    } */
 
     MOP_POSTCREATE_UPDATE(vpp);
     
