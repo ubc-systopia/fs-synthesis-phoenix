@@ -1591,14 +1591,13 @@ genfs_create(void *v)
         
         MOP_PARENTDIR_UPDATE(dvp);
 
-        error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk);
-        /*
+        
         if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
             kmem_free(dirbuf, dirsize);
             kmem_free(filename, max_namesize + 1);
             kmem_free(buf, dirsize);
             return error;
-        } */
+        }
     }
     
     if ((error = MOP_UPDATE_DISK(vpp))) {
@@ -1625,7 +1624,6 @@ genfs_create(void *v)
         return error;
     }
     
-    //panic("sigfault not in get_blk");
     
     MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, max_namesize);
     if (MOP_HTREE_HAS_IDX(dvp)) {
@@ -1640,13 +1638,12 @@ genfs_create(void *v)
         error = MOP_ADD_TO_NEW_BLOCK(dvp, dirbuf, cnp, newentrysize);
     else {
         MOP_ADD_DIRENTRY(buf, dirbuf, newentrysize, n);
-        error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk);
-    /*
+    
     if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
         return error;
-    } */
+    }
     
     if (MOP_ISDIR(*vpp))
         MOP_PARENTDIR_UPDATE(dvp);
