@@ -1600,14 +1600,14 @@ genfs_create(void *v)
         }
     }
     
-    if ((error = MOP_UPDATE_DISK(vpp))) {
+    if ((error = MOP_GROW_PARENTDIR(dvp, &newentrysize))) {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
         kmem_free(buf, dirsize);
         return error;
     }
     
-    if ((error = MOP_GROW_PARENTDIR(dvp, &dirsize))) {
+    if ((error = MOP_UPDATE_DISK(vpp))) {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
         kmem_free(buf, dirsize);
@@ -1615,7 +1615,7 @@ genfs_create(void *v)
     }
 
     int n = 0;
-    MOP_GET_DIRENT_POS(dvp, &n, newentrysize);
+    MOP_GET_DIRENT_POS(dvp, &n, dirsize);
     
     if ((error = MOP_GET_BLK(dvp, *vpp, &buf, n, &blk, 0))) {
         kmem_free(dirbuf, dirsize);
