@@ -251,10 +251,10 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
 {
     int error = 0;
     struct v7fs_node *parent_node = dvp->v_data;
-    struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
-    struct v7fs_self *fs = v7fsmount->core;
+    //struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
+    //struct v7fs_self *fs = v7fsmount->core;
     //char filename[V7FS_NAME_MAX + 1];
-    struct v7fs_inode *parent_dir = &parent_node->inode;
+    //struct v7fs_inode *parent_dir = &parent_node->inode;
     //struct v7fs_node *new_node = (*vpp)->v_data;
     //struct v7fs_inode inode = new_node->inode;
     daddr_t blk;
@@ -320,7 +320,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
         MOP_PARENTDIR_UPDATE(dvp);
     }
 
-    DPRINTF("done. (dirent size=%dbyte)\n", parent_dir->filesize);
+    //DPRINTF("done. (dirent size=%dbyte)\n", parent_dir->filesize);
     
     // Sync dirent size change.
     uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));
