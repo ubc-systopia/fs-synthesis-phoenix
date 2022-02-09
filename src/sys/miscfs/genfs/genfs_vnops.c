@@ -1614,6 +1614,7 @@ genfs_create(void *v)
         return error;
     }
 
+    /*
     int n = 0;
     MOP_GET_DIRENT_POS(dvp, &n, dirsize);
     
@@ -1649,8 +1650,8 @@ genfs_create(void *v)
         MOP_PARENTDIR_UPDATE(dvp);
     
     uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
-}
-    //MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
+} */
+    error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
 
     MOP_POSTCREATE_UPDATE(vpp);
     

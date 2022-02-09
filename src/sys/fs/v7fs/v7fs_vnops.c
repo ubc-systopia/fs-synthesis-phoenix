@@ -257,12 +257,12 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     struct v7fs_inode *parent_dir = &parent_node->inode;
     //struct v7fs_node *new_node = (*vpp)->v_data;
     //struct v7fs_inode inode = new_node->inode;
-    //daddr_t blk;
+    daddr_t blk;
     
     //MOP_FILENAME_TRUNCATE(filename, cnp);
 
-    //size_t dirsize = -1;
-    //MOP_GET_DIRBUF_SIZE(&dirsize);
+    size_t dirsize = -1;
+    MOP_GET_DIRBUF_SIZE(&dirsize);
     
 
     //void *buf;
@@ -296,7 +296,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     
    // void *buf;
     
-    /*
+    
     size_t sz = MOP_GET_FILESIZE(dvp);
     sz = V7FS_RESIDUE_BSIZE(sz);    // last block payload.
     int n = sz / dirsize - 1;
@@ -305,16 +305,19 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
         return error;
     }
 
-    MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX); */
-    //MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
+    MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, V7FS_NAME_MAX);
+    MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
     /*if (!fs->io.write(fs->io.cookie, buf, blk))
         error = EIO;
     scratch_free(fs, buf); */
+    
+    error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk);
 
     
     if (MOP_ISDIR(*vpp)) {
-        parent_dir->nlink++;
-        v7fs_inode_writeback(fs, parent_dir);
+        //parent_dir->nlink++;
+        //v7fs_inode_writeback(fs, parent_dir);
+        MOP_PARENTDIR_UPDATE(dvp);
     }
 
     DPRINTF("done. (dirent size=%dbyte)\n", parent_dir->filesize);
