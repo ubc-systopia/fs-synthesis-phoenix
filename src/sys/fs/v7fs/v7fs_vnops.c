@@ -250,7 +250,7 @@ int v7fs_mop_grow_parentdir(struct vnode *dvp, size_t *dirsize)
 int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname* cnp, struct vattr* vap, char *dirbuf, size_t newentrysize, char *filename, char* buf)
 {
     int error = 0;
-    struct v7fs_node *parent_node = dvp->v_data;
+    //struct v7fs_node *parent_node = dvp->v_data;
     //struct v7fs_mount *v7fsmount = parent_node->v7fsmount;
     //struct v7fs_self *fs = v7fsmount->core;
     //char filename[V7FS_NAME_MAX + 1];
@@ -296,10 +296,13 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     
    // void *buf;
     
-    
+    /*
     size_t sz = MOP_GET_FILESIZE(dvp);
     sz = V7FS_RESIDUE_BSIZE(sz);    // last block payload.
-    int n = sz / dirsize - 1;
+    int n = sz / dirsize - 1; */
+    
+    int n = 0;
+    MOP_GET_DIRENT_POS(dvp, &n, dirsize);
     
     if ((error = MOP_GET_BLK(dvp, *vpp, &buf, n, &blk, 0))) {
         return error;
@@ -323,7 +326,7 @@ int v7fs_mop_create(struct vnode* dvp, struct vnode** vpp, struct componentname*
     //DPRINTF("done. (dirent size=%dbyte)\n", parent_dir->filesize);
     
     // Sync dirent size change.
-    uvm_vnp_setsize(dvp, v7fs_inode_filesize(&parent_node->inode));
+    uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
 
     return error;
     
