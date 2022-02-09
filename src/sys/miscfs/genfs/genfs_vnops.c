@@ -1651,7 +1651,28 @@ genfs_create(void *v)
     
     uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
 } */
-    error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
+    int n = 0;
+    MOP_GET_DIRENT_POS(dvp, &n, dirsize);
+    
+    if ((error = MOP_GET_BLK(dvp, *vpp, &buf, n, &blk, 0))) {
+        kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
+        kmem_free(buf, dirsize);
+        return error;
+    }
+    
+    MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, max_namesize);
+    MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
+    error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk);
+
+    
+    if (MOP_ISDIR(*vpp)) {
+        MOP_PARENTDIR_UPDATE(dvp);
+    }
+    
+    // Sync dirent size change.
+    uvm_vnp_setsize(dvp, MOP_GET_FILESIZE(dvp));
+    //error = MOP_CREATE(dvp, vpp, cnp, vap, dirbuf, newentrysize, filename, buf);
 
     MOP_POSTCREATE_UPDATE(vpp);
     
