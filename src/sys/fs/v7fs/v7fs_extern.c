@@ -56,7 +56,7 @@ int (**v7fs_vnodeop_p)(void *);	/* filled by getnewvnode (vnode.h) */
 const struct vnodeopv_entry_desc v7fs_vnodeop_entries[] = {
 	{ &vop_default_desc, vn_default_error },
 	{ &vop_lookup_desc, v7fs_lookup },		/* lookup */
-	{ &vop_create_desc, v7fs_create },		/* create */
+	{ &vop_create_desc, genfs_create },		/* create */
 	{ &vop_mknod_desc, v7fs_mknod },		/* mknod */
 	{ &vop_open_desc, genfs_open },			/* open */
 	{ &vop_close_desc, genfs_close },		/* close */

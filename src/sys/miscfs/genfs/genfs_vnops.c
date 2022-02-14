@@ -1663,7 +1663,12 @@ genfs_create(void *v)
     
     MOP_SET_DIRENT(*vpp, cnp, dirbuf, &newentrysize, filename, max_namesize);
     MOP_ADD_DIRENTRY(buf, dirbuf, dirsize, n);
-    error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk);
+    if ((error = MOP_DIRENT_WRITEBACK((*vpp), buf, blk)) != 0) {
+        kmem_free(dirbuf, dirsize);
+        kmem_free(filename, max_namesize + 1);
+        kmem_free(buf, dirsize);
+        return error;
+    }
 
     
     if (MOP_ISDIR(*vpp)) {
