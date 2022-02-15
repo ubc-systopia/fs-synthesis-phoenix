@@ -1600,7 +1600,7 @@ genfs_create(void *v)
         }
     }
     
-    if ((error = MOP_GROW_PARENTDIR(dvp, &newentrysize))) {
+    if ((error = MOP_GROW_PARENTDIR(dvp, &dirsize))) {
         kmem_free(dirbuf, dirsize);
         kmem_free(filename, max_namesize + 1);
         kmem_free(buf, dirsize);
